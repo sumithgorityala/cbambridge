@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CBAMbridge — Compliance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Instrument+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   RESET & TOKENS
+═══════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;height:100%;}
+:root{
+  --ink0:#080c14;--ink1:#0d1420;--ink2:#111c2a;--ink3:#141f2d;
+  --b0:#192334;--b1:#1f2d3f;--b2:#263547;--b3:#2d3e52;
+  --t0:#eef2f7;--t1:#8ca0b8;--t2:#4a5e72;--t3:#2d3e52;
+  --em:#00c896;--emd:#003d2e;--emg:rgba(0,200,150,.07);--emg2:rgba(0,200,150,.12);
+  --em2:rgba(0,200,150,.45);
+  --warn:#f59e0b;--warnbg:rgba(245,158,11,.08);--warnbdr:rgba(245,158,11,.35);
+  --danger:#ef4444;--dangerbg:rgba(239,68,68,.08);--dangerbdr:rgba(239,68,68,.35);
+  --ok:#22c55e;--okbg:rgba(34,197,94,.08);
+  --glow:0 0 32px rgba(0,200,150,.15);
+  --sidebar:220px;
+}
+body{
+  font-family:'Instrument Sans','Segoe UI',sans-serif;
+  font-weight:300;font-size:14px;line-height:1.6;
+  background:var(--ink0);color:var(--t0);
+  overflow-x:hidden;cursor:none;height:100%;
+}
+a{text-decoration:none;color:inherit;}
+button{cursor:none;}
+input,select,textarea{cursor:none;}
+
+/* ═══════════════════════════════════════════════════════════
+   CURSOR
+═══════════════════════════════════════════════════════════ */
+#cur{position:fixed;width:7px;height:7px;background:var(--em);border-radius:50%;
+  pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s;}
+#cur-r{position:fixed;width:26px;height:26px;border:1px solid var(--em2);border-radius:50%;
+  pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .15s,height .15s;}
+
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT — THREE COLUMN (sidebar | main | context panel)
+═══════════════════════════════════════════════════════════ */
+#shell{display:flex;height:100vh;overflow:hidden;}
+#sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  background:var(--ink1);border-right:1px solid var(--b0);
+  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
+  transition:width .3s ease;
+}
+#main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0;}
+#ctx-panel{
+  width:300px;flex-shrink:0;
+  background:var(--ink1);border-left:1px solid var(--b0);
+  overflow-y:auto;
+  transition:width .3s ease;
+}
+@media(max-width:1200px){#ctx-panel{display:none;}}
+@media(max-width:768px){
+  #sidebar{position:fixed;left:-220px;top:0;bottom:0;z-index:400;}
+  #sidebar.open{left:0;}
+  #main{width:100%;}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════════════════════════ */
+#topbar{
+  height:52px;background:var(--ink0);border-bottom:1px solid var(--b0);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;flex-shrink:0;position:sticky;top:0;z-index:100;
+}
+.wordmark{
+  font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;
+  letter-spacing:-.02em;color:var(--t0);display:flex;align-items:center;gap:2px;
+}
+.wordmark span{color:var(--em);}
+.topbar-center{display:flex;align-items:center;gap:6px;}
+.breadcrumb{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2);letter-spacing:.04em;}
+.bc-sep{color:var(--b2);}
+.bc-cur{color:var(--t1);}
+
+.deadline-chip{
+  display:flex;align-items:center;gap:6px;
+  border:1px solid var(--dangerbdr);background:var(--dangerbg);
+  padding:5px 12px;font-family:'JetBrains Mono',monospace;
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--danger);
+}
+.dl-dot{width:5px;height:5px;border-radius:50%;background:var(--danger);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.3;transform:scale(.6);}}
+
+.tb-actions{display:flex;align-items:center;gap:10px;}
+.tb-btn{
+  background:transparent;border:1px solid var(--b1);color:var(--t2);
+  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;padding:7px 14px;transition:all .2s;
+}
+.tb-btn:hover{border-color:var(--em);color:var(--em);background:var(--emg);}
+.tb-btn-em{background:var(--em);color:var(--ink0);border:none;
+  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;padding:8px 16px;transition:background .2s;}
+.tb-btn-em:hover{background:#00e5aa;}
+
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR NAV
+═══════════════════════════════════════════════════════════ */
+.sb-logo{
+  padding:16px 20px;border-bottom:1px solid var(--b0);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+}
+.sb-logo-icon{
+  width:28px;height:28px;background:var(--em);display:flex;
+  align-items:center;justify-content:center;flex-shrink:0;
+}
+.sb-section{padding:16px 0;}
+.sb-label{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--t3);padding:0 16px 8px;
+}
+.sb-item{
+  display:flex;align-items:center;gap:12px;padding:9px 16px;
+  transition:background .2s,color .2s;border-left:2px solid transparent;
+  background:none;border-right:none;border-top:none;border-bottom:none;
+  width:100%;text-align:left;
+}
+.sb-item:hover{background:var(--emg);color:var(--t0);}
+.sb-item.active{
+  border-left-color:var(--em);background:var(--emg2);
+  color:var(--t0);
+}
+.sb-item.active .sb-icon{color:var(--em);}
+.sb-icon{font-size:14px;flex-shrink:0;width:16px;text-align:center;color:var(--t2);}
+.sb-text{font-size:12px;color:inherit;white-space:nowrap;}
+.sb-badge{
+  margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;
+  background:var(--danger);color:white;padding:2px 6px;border-radius:2px;
+}
+.sb-badge-warn{background:var(--warn);}
+.sb-badge-em{background:var(--em);color:var(--ink0);}
+
+/* Sidebar bottom */
+.sb-bottom{margin-top:auto;border-top:1px solid var(--b0);padding:16px;}
+.sb-user{display:flex;align-items:center;gap:10px;}
+.sb-avatar{
+  width:28px;height:28px;background:var(--b2);border:1px solid var(--b1);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--em);
+  flex-shrink:0;
+}
+.sb-user-info{min-width:0;}
+.sb-user-name{font-size:12px;color:var(--t0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-user-role{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t2);letter-spacing:.08em;text-transform:uppercase;}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN CONTENT AREA
+═══════════════════════════════════════════════════════════ */
+.page{display:none;flex-direction:column;flex:1;}
+.page.active{display:flex;}
+.page-header{
+  padding:24px 32px 20px;border-bottom:1px solid var(--b0);
+  display:flex;align-items:flex-start;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;flex-shrink:0;
+}
+.page-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:22px;letter-spacing:-.01em;margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--t1);}
+.page-body{padding:24px 32px;flex:1;overflow-y:auto;}
+
+/* ═══════════════════════════════════════════════════════════
+   FORM INPUTS
+═══════════════════════════════════════════════════════════ */
+.field{margin-bottom:16px;}
+.field-label{
+  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--t2);display:block;margin-bottom:6px;
+}
+.field-hint{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);margin-top:4px;}
+.inp{
+  background:rgba(13,20,32,.9);border:1px solid var(--b1);color:var(--t0);
+  font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.03em;
+  padding:10px 14px;outline:none;width:100%;transition:border-color .2s;
+}
+.inp::placeholder{color:var(--t3);}
+.inp:focus{border-color:var(--em);}
+select.inp option{background:var(--ink2);}
+.inp-group{display:flex;}
+.inp-group .inp{flex:1;}
+.inp-suffix{
+  background:var(--ink0);border:1px solid var(--b1);border-left:none;
+  padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--t2);white-space:nowrap;display:flex;align-items:center;
+}
+
+/* Toggle */
+.toggle{position:relative;width:36px;height:20px;cursor:none;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{
+  position:absolute;inset:0;background:var(--b2);transition:background .2s;
+}
+.toggle-slider::before{
+  content:'';position:absolute;width:14px;height:14px;background:var(--t2);
+  left:3px;top:3px;transition:all .2s;
+}
+.toggle input:checked+.toggle-slider{background:var(--em);}
+.toggle input:checked+.toggle-slider::before{transform:translateX(16px);background:var(--ink0);}
+
+/* ═══════════════════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════════════════ */
+.btn{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;padding:10px 20px;
+  border:none;transition:all .2s;display:inline-flex;align-items:center;gap:8px;
+}
+.btn-em{background:var(--em);color:var(--ink0);}
+.btn-em:hover{background:#00e5aa;transform:translateY(-1px);}
+.btn-em:disabled{opacity:.4;transform:none;}
+.btn-outline{background:transparent;border:1px solid var(--b1);color:var(--t1);}
+.btn-outline:hover{border-color:var(--em);color:var(--em);background:var(--emg);}
+.btn-danger{background:transparent;border:1px solid var(--dangerbdr);color:var(--danger);}
+.btn-danger:hover{background:var(--dangerbg);}
+.btn-sm{padding:7px 14px;font-size:10px;}
+.btn-xs{padding:4px 10px;font-size:9px;}
+
+/* ═══════════════════════════════════════════════════════════
+   CARDS & PANELS
+═══════════════════════════════════════════════════════════ */
+.card{background:var(--ink2);border:1px solid var(--b0);padding:20px;}
+.card-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--b0);
+}
+.card-title{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--t2);}
+.panel{background:var(--ink1);border:1px solid var(--b0);}
+
+/* KPI tiles */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--b0);}
+.kpi{background:var(--ink2);padding:20px;position:relative;overflow:hidden;}
+.kpi::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--em);transform:scaleX(0);transition:transform .3s;
+  transform-origin:left;
+}
+.kpi:hover::after{transform:scaleX(1);}
+.kpi-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--t2);margin-bottom:10px;}
+.kpi-val{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:clamp(22px,2.5vw,30px);color:var(--t0);line-height:1;margin-bottom:6px;}
+.kpi-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t2);}
+.kpi-em .kpi-val{color:var(--em);}
+.kpi-warn .kpi-val{color:var(--warn);}
+.kpi-danger .kpi-val{color:var(--danger);}
+.kpi-delta{font-family:'JetBrains Mono',monospace;font-size:9px;margin-top:6px;}
+.delta-up{color:var(--ok);}
+.delta-down{color:var(--danger);}
+
+/* ═══════════════════════════════════════════════════════════
+   ALERT COMPONENTS
+═══════════════════════════════════════════════════════════ */
+.alert{padding:14px 18px;display:flex;align-items:flex-start;gap:12px;border-left:3px solid;}
+.alert-critical{border-color:var(--danger);background:var(--dangerbg);}
+.alert-warn{border-color:var(--warn);background:var(--warnbg);}
+.alert-ok{border-color:var(--ok);background:var(--okbg);}
+.alert-em{border-color:var(--em);background:var(--emg);}
+.alert-icon{font-size:14px;flex-shrink:0;margin-top:1px;}
+.alert-title{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px;}
+.alert-critical .alert-title{color:var(--danger);}
+.alert-warn .alert-title{color:var(--warn);}
+.alert-ok .alert-title{color:var(--ok);}
+.alert-em .alert-title{color:var(--em);}
+.alert-body{font-size:13px;color:var(--t1);line-height:1.65;}
+
+/* ═══════════════════════════════════════════════════════════
+   THRESHOLD GAUGE
+═══════════════════════════════════════════════════════════ */
+.gauge-track{height:8px;background:var(--b1);position:relative;overflow:hidden;}
+.gauge-fill{height:100%;transition:width 1s cubic-bezier(.16,1,.3,1);position:relative;}
+.gauge-fill::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:3px;
+  background:rgba(255,255,255,.6);
+  animation:gaugePulse 1.5s ease-in-out infinite;
+}
+@keyframes gaugePulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+.gauge-threshold{
+  position:absolute;right:0;top:-2px;bottom:-2px;width:2px;
+  background:rgba(255,255,255,.25);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TABLE
+═══════════════════════════════════════════════════════════ */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--t2);padding:10px 16px;
+  background:var(--ink1);border-bottom:1px solid var(--b0);
+  text-align:left;white-space:nowrap;
+}
+.tbl td{
+  padding:12px 16px;border-bottom:1px solid var(--b0);font-size:13px;
+  color:var(--t1);
+}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tbody tr:hover{background:rgba(0,200,150,.03);}
+.tbl-em{color:var(--em)!important;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.tbl-t0{color:var(--t0)!important;}
+.tbl-mono{font-family:'JetBrains Mono',monospace;font-size:11px;}
+.tbl-danger{color:var(--danger)!important;}
+.tbl-warn{color:var(--warn)!important;}
+
+/* ═══════════════════════════════════════════════════════════
+   STATUS BADGE
+═══════════════════════════════════════════════════════════ */
+.badge{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 8px;border:1px solid;display:inline-block;
+}
+.badge-em{color:var(--em);border-color:var(--emd);background:var(--emg);}
+.badge-warn{color:var(--warn);border-color:var(--warnbdr);background:var(--warnbg);}
+.badge-danger{color:var(--danger);border-color:var(--dangerbdr);background:var(--dangerbg);}
+.badge-neutral{color:var(--t2);border-color:var(--b1);background:transparent;}
+.badge-ok{color:var(--ok);border-color:rgba(34,197,94,.35);background:var(--okbg);}
+
+/* ═══════════════════════════════════════════════════════════
+   PROGRESS STEPS
+═══════════════════════════════════════════════════════════ */
+.steps-bar{
+  display:flex;align-items:center;gap:0;padding:0 32px;
+  background:var(--ink1);border-bottom:1px solid var(--b0);
+  overflow-x:auto;flex-shrink:0;
+}
+.step-item{
+  display:flex;align-items:center;gap:10px;padding:14px 20px;
+  cursor:none;transition:all .2s;border-bottom:2px solid transparent;
+  white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;
+}
+.step-item:hover{color:var(--t0);}
+.step-item.done{color:var(--t1);}
+.step-item.active{border-bottom-color:var(--em);}
+.step-num{
+  width:20px;height:20px;border:1px solid var(--b2);
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  display:flex;align-items:center;justify-content:center;color:var(--t2);
+  flex-shrink:0;transition:all .2s;
+}
+.step-item.active .step-num{border-color:var(--em);background:var(--em);color:var(--ink0);}
+.step-item.done .step-num{border-color:var(--ok);background:var(--ok);color:var(--ink0);}
+.step-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:inherit;}
+.step-item.active .step-label{color:var(--t0);}
+.step-arrow{color:var(--b2);font-size:10px;margin:0 4px;}
+
+/* ═══════════════════════════════════════════════════════════
+   DRAG DROP ZONE
+═══════════════════════════════════════════════════════════ */
+.dropzone{
+  border:2px dashed var(--b1);transition:all .3s;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:48px 24px;text-align:center;cursor:none;
+}
+.dropzone:hover,.dropzone.drag-over{border-color:var(--em);background:var(--emg);}
+.dz-icon{font-size:32px;margin-bottom:16px;opacity:.4;}
+.dz-title{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--t1);margin-bottom:8px;}
+.dz-sub{font-size:12px;color:var(--t2);}
+
+/* ═══════════════════════════════════════════════════════════
+   SCENARIO BUTTONS
+═══════════════════════════════════════════════════════════ */
+.scenario-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+@media(max-width:600px){.scenario-grid{grid-template-columns:repeat(2,1fr);}}
+.scenario-btn{
+  border:1px solid var(--b1);background:var(--ink2);
+  padding:12px;text-align:center;transition:all .2s;cursor:none;
+}
+.scenario-btn.active{border-color:var(--em);background:var(--emg);}
+.scenario-btn:hover{border-color:var(--b2);}
+.sc-price{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;color:var(--t0);margin-bottom:2px;}
+.sc-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);}
+.scenario-btn.active .sc-price{color:var(--em);}
+
+/* ═══════════════════════════════════════════════════════════
+   CONTEXT PANEL
+═══════════════════════════════════════════════════════════ */
+.ctx-section{padding:16px 20px;border-bottom:1px solid var(--b0);}
+.ctx-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--t2);margin-bottom:12px;}
+.reg-countdown{text-align:center;padding:16px 0;}
+.reg-days{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:48px;color:var(--danger);line-height:1;}
+.reg-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t2);letter-spacing:.12em;text-transform:uppercase;margin-top:4px;}
+.reg-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t1);margin-top:8px;}
+.ctx-metric{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--b0);}
+.ctx-metric:last-child{border-bottom:none;}
+.ctx-mkey{font-size:12px;color:var(--t2);}
+.ctx-mval{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t0);}
+.ctx-mval-em{color:var(--em)!important;}
+.reg-bar{height:4px;background:var(--b1);margin-top:12px;overflow:hidden;}
+.reg-fill{height:100%;background:var(--danger);transition:width 1s;}
+
+/* ETS ticker */
+.ets-ticker{
+  display:flex;align-items:baseline;gap:6px;padding:12px 0;
+}
+.ets-price{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:28px;color:var(--em);}
+.ets-unit{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t2);}
+.ets-change{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ok);}
+
+/* Checklist */
+.checklist-item{
+  display:flex;align-items:flex-start;gap:10px;padding:8px 0;
+  border-bottom:1px solid var(--b0);
+}
+.checklist-item:last-child{border-bottom:none;}
+.cl-check{width:16px;height:16px;border:1px solid var(--b2);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.cl-check.done{background:var(--em);border-color:var(--em);}
+.cl-check.done::after{content:'✓';font-size:9px;color:var(--ink0);}
+.cl-text{font-size:12px;color:var(--t1);line-height:1.5;}
+.cl-text.done{color:var(--t2);text-decoration:line-through;}
+
+/* ═══════════════════════════════════════════════════════════
+   SECTOR PILLS
+═══════════════════════════════════════════════════════════ */
+.sector-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;border:1px solid var(--b1);
+  padding:3px 9px;color:var(--t2);cursor:none;transition:all .2s;
+}
+.sector-pill.active,.sector-pill:hover{border-color:var(--em);color:var(--em);background:var(--emg);}
+
+/* ═══════════════════════════════════════════════════════════
+   COMPLIANCE SCORE RING
+═══════════════════════════════════════════════════════════ */
+.score-ring-wrap{position:relative;width:100px;height:100px;}
+.score-ring-wrap svg{transform:rotate(-90deg);}
+.score-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.score-num{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:22px;color:var(--t0);line-height:1;}
+.score-pct{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t2);}
+
+/* ═══════════════════════════════════════════════════════════
+   MISC
+═══════════════════════════════════════════════════════════ */
+.divider{border:none;border-top:1px solid var(--b0);margin:16px 0;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:640px){.grid-2{grid-template-columns:1fr;}}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+@media(max-width:768px){.grid-3{grid-template-columns:1fr 1fr;}}
+@media(max-width:500px){.grid-3{grid-template-columns:1fr;}}
+.text-em{color:var(--em);}
+.text-warn{color:var(--warn);}
+.text-danger{color:var(--danger);}
+.text-t0{color:var(--t0);}
+.text-t2{color:var(--t2);}
+.mono{font-family:'JetBrains Mono',monospace;}
+.display{font-family:'Bricolage Grotesque',sans-serif;}
+.section-space{margin-bottom:24px;}
+
+/* file row */
+.file-row{
+  display:grid;grid-template-columns:32px 1fr auto auto auto;
+  gap:12px;align-items:center;padding:10px 0;
+  border-bottom:1px solid var(--b0);
+}
+.file-row:last-child{border-bottom:none;}
+.file-ext{
+  background:var(--ink0);border:1px solid var(--b1);
+  font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--t2);
+  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  letter-spacing:.04em;text-transform:uppercase;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--ink0);}
+::-webkit-scrollbar-thumb{background:var(--b1);}
+
+/* Print */
+@media print{
+  #sidebar,#ctx-panel,#topbar,.btn,.tb-btn,.sb-item,.steps-bar{display:none!important;}
+  #main{overflow:visible;}
+  .page{display:flex!important;}
+  body{background:#fff;color:#000;}
+}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="cur-r"></div>
+
+<div id="shell">
+
+<!-- ═══════════════════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════════════════ -->
+<aside id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">
+      <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:11px;color:var(--ink0);">CB</span>
+    </div>
+    <div>
+      <div class="wordmark" style="font-size:14px;">CBAM<span>bridge</span></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t2);letter-spacing:.08em;">Compliance Platform</div>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">Overview</div>
+    <button class="sb-item active" onclick="nav('overview')">
+      <span class="sb-icon">◈</span>
+      <span class="sb-text">Dashboard</span>
+    </button>
+    <button class="sb-item" onclick="nav('register')">
+      <span class="sb-icon">📦</span>
+      <span class="sb-text">Shipment Register</span>
+      <span class="sb-badge sb-badge-warn" id="sb-ship-count">0</span>
+    </button>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">Compliance Engine</div>
+    <button class="sb-item" onclick="nav('threshold')">
+      <span class="sb-icon">⚡</span>
+      <span class="sb-text">Threshold Analysis</span>
+      <span class="sb-badge" id="sb-thresh-badge" style="display:none;">!</span>
+    </button>
+    <button class="sb-item" onclick="nav('evidence')">
+      <span class="sb-icon">📁</span>
+      <span class="sb-text">Evidence Vault</span>
+      <span class="sb-badge sb-badge-em" id="sb-ev-count">0</span>
+    </button>
+    <button class="sb-item" onclick="nav('liability')">
+      <span class="sb-icon">€</span>
+      <span class="sb-text">Liability Model</span>
+    </button>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">Output</div>
+    <button class="sb-item" onclick="nav('report')">
+      <span class="sb-icon">📋</span>
+      <span class="sb-text">Compliance Report</span>
+    </button>
+    <button class="sb-item" onclick="nav('settings')">
+      <span class="sb-icon">⚙</span>
+      <span class="sb-text">Settings</span>
+    </button>
+  </div>
+
+  <div class="sb-bottom">
+    <div class="sb-user">
+      <div class="sb-avatar">SG</div>
+      <div class="sb-user-info">
+        <div class="sb-user-name">Sumith Gorityala</div>
+        <div class="sb-user-role">Export Compliance</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════════════════ -->
+<div id="main">
+
+  <!-- Top Bar -->
+  <div id="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <button class="tb-btn" style="display:none;" id="menu-btn" onclick="toggleSidebar()">☰</button>
+      <a href="index.html" class="wordmark" style="font-size:14px;">CBAM<span>bridge</span></a>
+      <div class="topbar-center">
+        <span class="breadcrumb bc-sep">›</span>
+        <span class="breadcrumb bc-cur" id="bc-current">Dashboard</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div class="deadline-chip">
+        <span class="dl-dot"></span>
+        <span>T−<strong id="top-days">0</strong> · 31 Mar 2026</span>
+      </div>
+      <button class="tb-btn" onclick="nav('report')">Export Report</button>
+      <button class="tb-btn-em" onclick="nav('register')">+ Log Shipment</button>
+    </div>
+  </div>
+
+  <!-- ── PAGE: DASHBOARD ─────────────────────────────────── -->
+  <div class="page active" id="page-overview">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Compliance Dashboard</div>
+        <div class="page-sub">Facility: Sircilla Manufacturing Unit · Reporting Year: 2026 · EU Reg. 2023/956</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="nav('report')">📋 View Report</button>
+        <button class="btn btn-em btn-sm" onclick="nav('register')">+ Add Shipment</button>
+      </div>
+    </div>
+    <div class="page-body">
+
+      <!-- Critical alert (shown when threshold exceeded) -->
+      <div id="dash-alert" style="display:none;margin-bottom:20px;">
+        <div class="alert alert-critical">
+          <span class="alert-icon">⚠</span>
+          <div>
+            <div class="alert-title">Critical Regulatory Alert — CBAM Omnibus 2026</div>
+            <div class="alert-body">Your cumulative annual import mass exceeds the <strong>50-tonne CBAM threshold</strong>. You MUST register as an <strong>Authorized CBAM Declarant</strong> by <strong>31 March 2026</strong>. Failure to register results in import suspension and penalties up to €50/tCO₂e.</div>
+            <div style="margin-top:10px;display:flex;gap:8px;">
+              <button class="btn btn-danger btn-xs" onclick="nav('report')">View Action Plan</button>
+              <button class="btn btn-outline btn-xs" onclick="document.getElementById('dash-alert').style.display='none'">Dismiss</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI row -->
+      <div class="kpi-grid section-space">
+        <div class="kpi" id="kpi-mass">
+          <div class="kpi-label">Total Import Mass</div>
+          <div class="kpi-val" id="kpi-mass-val">0.00 t</div>
+          <div class="kpi-sub" id="kpi-mass-sub">0% of 50t threshold</div>
+        </div>
+        <div class="kpi kpi-em" id="kpi-liability">
+          <div class="kpi-label">Est. CBAM Liability</div>
+          <div class="kpi-val" id="kpi-liab-val">€0</div>
+          <div class="kpi-sub">@ €65/tCO₂e base scenario</div>
+        </div>
+        <div class="kpi" id="kpi-certs">
+          <div class="kpi-label">Certificates Required</div>
+          <div class="kpi-val" id="kpi-cert-val">0</div>
+          <div class="kpi-sub">CBAM certificates · due 31 May</div>
+        </div>
+        <div class="kpi" id="kpi-evidence">
+          <div class="kpi-label">Evidence Completeness</div>
+          <div class="kpi-val" id="kpi-ev-val">0%</div>
+          <div class="kpi-sub" id="kpi-ev-sub">0 of 6 required docs uploaded</div>
+        </div>
+        <div class="kpi" id="kpi-deadline">
+          <div class="kpi-label">Days to Deadline</div>
+          <div class="kpi-val kpi-danger" id="kpi-days-val">—</div>
+          <div class="kpi-sub">Authorized Declarant Registration</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Shipments Logged</div>
+          <div class="kpi-val" id="kpi-ship-val">0</div>
+          <div class="kpi-sub">across <span id="kpi-sectors">0</span> sectors</div>
+        </div>
+      </div>
+
+      <!-- Threshold gauge + sector breakdown -->
+      <div class="grid-2 section-space">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Annual Import Mass vs. Threshold</span>
+            <span class="badge" id="thresh-badge-small">Below Threshold</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px;">
+            <span class="display" style="font-size:36px;font-weight:700;color:var(--t0);" id="gauge-num">0.00</span>
+            <span class="mono" style="font-size:13px;color:var(--t2);">/ 50 tonnes</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" id="gauge-fill" style="width:0%;background:var(--em);">
+              <div class="gauge-threshold"></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;">
+            <span class="mono" style="font-size:9px;color:var(--t2);">0 t</span>
+            <span class="mono" style="font-size:9px;color:var(--t2);">50 t — Registration Required</span>
+          </div>
+          <div id="sector-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Compliance Readiness Score</span>
+            <button class="btn btn-outline btn-xs" onclick="nav('evidence')">Upload Evidence</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:24px;">
+            <div class="score-ring-wrap">
+              <svg width="100" height="100" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--b1)" stroke-width="8"/>
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--em)" stroke-width="8"
+                  stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round"
+                  id="score-circle" style="transition:stroke-dashoffset 1s ease;"/>
+              </svg>
+              <div class="score-inner">
+                <div class="score-num" id="score-num">0</div>
+                <div class="score-pct">/ 100</div>
+              </div>
+            </div>
+            <div style="flex:1;">
+              <div id="readiness-items" style="display:flex;flex-direction:column;gap:6px;">
+                <div class="checklist-item"><div class="cl-check" id="ck-shipments"></div><div class="cl-text" id="ck-shipments-txt">Log at least 1 shipment</div></div>
+                <div class="checklist-item"><div class="cl-check" id="ck-threshold"></div><div class="cl-text" id="ck-threshold-txt">Threshold analysis complete</div></div>
+                <div class="checklist-item"><div class="cl-check" id="ck-evidence"></div><div class="cl-text" id="ck-evidence-txt">Upload evidence bundle (3+ docs)</div></div>
+                <div class="checklist-item"><div class="cl-check" id="ck-liability"></div><div class="cl-text" id="ck-liability-txt">Run liability model</div></div>
+                <div class="checklist-item"><div class="cl-check" id="ck-report"></div><div class="cl-text" id="ck-report-txt">Generate compliance report</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent shipments -->
+      <div class="panel section-space">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--b0);display:flex;justify-content:space-between;align-items:center;">
+          <span class="card-title">Recent Shipments</span>
+          <button class="btn btn-outline btn-xs" onclick="nav('register')">View All →</button>
+        </div>
+        <div id="dash-shipments-empty" style="padding:32px;text-align:center;">
+          <p class="mono" style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);margin-bottom:8px;">No Shipments Logged</p>
+          <p style="font-size:13px;color:var(--t2);margin-bottom:16px;">Begin by logging your first CBAM-covered import.</p>
+          <button class="btn btn-em btn-sm" onclick="nav('register')">+ Log First Shipment</button>
+        </div>
+        <div id="dash-shipments-table" style="display:none;overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Description</th><th>Sector</th><th>Mass</th>
+                <th>Origin</th><th>Date</th><th>Emission Data</th><th>Est. Liability</th>
+              </tr>
+            </thead>
+            <tbody id="dash-ship-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /page-body -->
+  </div><!-- /page-overview -->
+
+  <!-- ── PAGE: SHIPMENT REGISTER ─────────────────────────── -->
+  <div class="page" id="page-register">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Shipment Register</div>
+        <div class="page-sub">Log CBAM-covered imports. Cumulative mass tracks against the 50-tonne threshold in real time.</div>
+      </div>
+      <button class="btn btn-em btn-sm" id="reg-add-btn" onclick="openShipmentForm()">+ Log New Shipment</button>
+    </div>
+
+    <!-- Inline form (hidden by default) -->
+    <div id="ship-form-wrap" style="display:none;border-bottom:1px solid var(--b0);background:var(--ink1);">
+      <div style="padding:20px 32px;border-bottom:1px solid var(--b0);">
+        <span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--em);" id="ship-form-title">Log New Shipment Entry</span>
+      </div>
+      <div style="padding:20px 32px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="field" style="grid-column:1/-1;">
+            <label class="field-label">Goods Description *</label>
+            <input class="inp" id="sf-desc" type="text" placeholder="e.g. Hot-rolled steel coil, Grade S355, 3mm thickness"/>
+          </div>
+          <div class="field">
+            <label class="field-label">CBAM Sector *</label>
+            <select class="inp" id="sf-sector" onchange="updateSectorHint()">
+              <option value="steel">Steel & Iron Products</option>
+              <option value="aluminum">Aluminium & Articles</option>
+              <option value="cement">Cement & Clinker</option>
+              <option value="fertilizers">Fertilizers (N-based)</option>
+              <option value="electricity">Electricity (MWh)</option>
+              <option value="hydrogen">Hydrogen</option>
+            </select>
+            <div class="field-hint" id="sector-hint">Default EF: 2.04 tCO₂e/t · HS: 7206, 7207, 7208, 7216</div>
+          </div>
+          <div class="field">
+            <label class="field-label">Country of Origin *</label>
+            <select class="inp" id="sf-country">
+              <option value="India">India</option>
+              <option value="China">China</option>
+              <option value="Turkey">Turkey</option>
+              <option value="Russia">Russia</option>
+              <option value="Ukraine">Ukraine</option>
+              <option value="Brazil">Brazil</option>
+              <option value="South Korea">South Korea</option>
+              <option value="Japan">Japan</option>
+              <option value="Taiwan">Taiwan</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Import Mass *</label>
+            <div class="inp-group">
+              <input class="inp" id="sf-mass" type="number" min="0" step="0.001" placeholder="0.000"/>
+              <select class="inp" id="sf-unit" style="width:90px;flex-shrink:0;">
+                <option value="t">tonnes</option>
+                <option value="kg">kg</option>
+              </select>
+            </div>
+            <div class="field-hint" id="sf-mass-hint">Enter the net mass of CBAM goods</div>
+          </div>
+          <div class="field">
+            <label class="field-label">HS Code</label>
+            <input class="inp" id="sf-hs" type="text" placeholder="e.g. 7208.10" maxlength="10"/>
+          </div>
+          <div class="field">
+            <label class="field-label">Shipment Date</label>
+            <input class="inp" id="sf-date" type="date"/>
+          </div>
+        </div>
+        <!-- Actual data toggle -->
+        <div style="border:1px solid var(--b1);padding:16px;margin-top:4px;background:var(--ink2);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <div>
+              <p class="mono" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--t1);">Verified Actual Emission Factor Available?</p>
+              <p class="mono" style="font-size:9px;color:var(--t2);margin-top:2px;">Using verified data instead of EU defaults can significantly reduce CBAM liability</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="sf-actual-toggle" onchange="toggleActualEF()"/>
+              <div class="toggle-slider"></div>
+            </label>
+          </div>
+          <div id="sf-actual-wrap" style="display:none;margin-top:12px;border-top:1px solid var(--b0);padding-top:12px;">
+            <div class="field" style="margin:0;max-width:300px;">
+              <label class="field-label" id="sf-ef-label">Actual Emission Factor (tCO₂e / tonne)</label>
+              <input class="inp" id="sf-ef" type="number" step="0.01" placeholder="EU default: 2.04"/>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button class="btn btn-em" onclick="saveShipment()">Save Shipment</button>
+          <button class="btn btn-outline" onclick="closeShipmentForm()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <!-- Threshold mini-gauge -->
+      <div class="card section-space">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+          <div>
+            <div class="card-title" style="margin-bottom:6px;">Cumulative Import Mass</div>
+            <div style="display:flex;align-items:baseline;gap:6px;">
+              <span class="display" style="font-size:28px;font-weight:700;color:var(--t0);" id="reg-total-mass">0.00 t</span>
+              <span class="mono" style="font-size:12px;color:var(--t2);">/ 50 t threshold</span>
+            </div>
+          </div>
+          <span class="badge" id="reg-thresh-badge">Safe</span>
+        </div>
+        <div class="gauge-track">
+          <div class="gauge-fill" id="reg-gauge" style="width:0%;background:var(--em);"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;">
+          <span class="mono" style="font-size:9px;color:var(--t2);">0 t</span>
+          <span class="mono" style="font-size:9px;color:var(--t2);">50 t — CBAM registration threshold</span>
+        </div>
+      </div>
+
+      <!-- Shipments table -->
+      <div class="panel">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--b0);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span class="card-title">Shipment Log — <span id="ship-count-label">0 entries</span></span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <select class="inp" id="filter-sector" style="width:auto;padding:6px 10px;font-size:10px;" onchange="renderShipments()">
+              <option value="">All Sectors</option>
+              <option value="steel">Steel</option>
+              <option value="aluminum">Aluminium</option>
+              <option value="cement">Cement</option>
+              <option value="fertilizers">Fertilizers</option>
+              <option value="electricity">Electricity</option>
+              <option value="hydrogen">Hydrogen</option>
+            </select>
+          </div>
+        </div>
+        <div id="ship-empty" style="padding:40px;text-align:center;">
+          <p class="mono" style="font-size:10px;color:var(--t2);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;">No Shipments Logged</p>
+          <p style="font-size:13px;color:var(--t2);margin-bottom:16px;">Use the "Log New Shipment" button to begin your import register.</p>
+          <button class="btn btn-em btn-sm" onclick="openShipmentForm()">+ Log First Shipment</button>
+        </div>
+        <div id="ship-table-wrap" style="display:none;overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>#</th><th>Description</th><th>Sector</th><th>Mass</th>
+                <th>Origin</th><th>HS Code</th><th>Date</th><th>Emission EF</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ship-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: THRESHOLD ANALYSIS ────────────────────────── -->
+  <div class="page" id="page-threshold">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Threshold Analysis</div>
+        <div class="page-sub">50-tonne CBAM Omnibus 2026 registration trigger · Real-time cumulative tracking</div>
+      </div>
+    </div>
+    <div class="page-body">
+
+      <div id="thresh-alert-wrap" style="margin-bottom:20px;"></div>
+
+      <!-- Large stat + breakdown -->
+      <div class="grid-2 section-space">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:20px;">Cumulative Mass Position</div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+            <span class="display" style="font-size:56px;font-weight:800;line-height:1;" id="th-big-num">0.00</span>
+            <span class="mono" style="font-size:16px;color:var(--t2);">tonnes</span>
+          </div>
+          <div style="margin:20px 0;">
+            <div class="gauge-track" style="height:12px;">
+              <div class="gauge-fill" id="th-gauge" style="width:0%;background:var(--em);height:12px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;">
+              <span class="mono" style="font-size:9px;color:var(--t2);">0 t</span>
+              <span class="mono" style="font-size:9px;color:var(--t2);">50 t threshold</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="border:1px solid var(--b0);padding:12px;">
+              <div class="mono" style="font-size:9px;color:var(--t2);margin-bottom:4px;">Threshold Used</div>
+              <div class="display" style="font-size:20px;font-weight:700;" id="th-pct">0%</div>
+            </div>
+            <div style="border:1px solid var(--b0);padding:12px;">
+              <div class="mono" style="font-size:9px;color:var(--t2);margin-bottom:4px;" id="th-gap-label">Headroom Remaining</div>
+              <div class="display" style="font-size:20px;font-weight:700;" id="th-gap">50.0 t</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px;">Mass by Sector</div>
+          <div id="th-sector-breakdown">
+            <p class="mono" style="font-size:10px;color:var(--t2);">No shipments logged. Add imports in the Shipment Register.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CBAM trigger logic -->
+      <div class="card section-space">
+        <div class="card-title" style="margin-bottom:16px;">Regulatory Trigger Logic — CBAM Omnibus 2026</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--b0);">
+          <div style="background:var(--ink1);padding:20px;">
+            <p class="mono" style="font-size:9px;color:var(--t2);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;">Below 50 t/year</p>
+            <p style="font-size:13px;color:var(--t1);line-height:1.7;">Simplified reporting applies. No Authorized Declarant registration required for current year. Monitor as volumes grow.</p>
+            <div style="margin-top:10px;"><span class="badge badge-ok">No Registration</span></div>
+          </div>
+          <div style="background:var(--ink1);padding:20px;border-left:1px solid var(--b0);border-right:1px solid var(--b0);">
+            <p class="mono" style="font-size:9px;color:var(--warn);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;">35–50 t/year · Warning Zone</p>
+            <p style="font-size:13px;color:var(--t1);line-height:1.7;">Begin registration preparation. At current growth trajectory, threshold may be breached mid-year.</p>
+            <div style="margin-top:10px;"><span class="badge badge-warn">Prepare Now</span></div>
+          </div>
+          <div style="background:var(--ink1);padding:20px;">
+            <p class="mono" style="font-size:9px;color:var(--danger);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;">Over 50 t/year · Critical</p>
+            <p style="font-size:13px;color:var(--t1);line-height:1.7;">Mandatory registration as Authorized CBAM Declarant by 31 March 2026. Annual declaration by 31 May each year thereafter.</p>
+            <div style="margin-top:10px;"><span class="badge badge-danger">Register by 31 Mar</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: EVIDENCE VAULT ─────────────────────────────── -->
+  <div class="page" id="page-evidence">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Evidence Vault</div>
+        <div class="page-sub">ISO 14064-3 compliant document management · EU Article 35 verification requirements</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="mono" style="font-size:12px;color:var(--t2);" id="ev-completeness-label">0 files · 0% complete</span>
+      </div>
+    </div>
+    <div class="page-body">
+
+      <!-- Category tabs -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;" id="ev-cat-tabs">
+        <button class="sector-pill active" onclick="setEvCat('all',this)">All Documents</button>
+        <button class="sector-pill" onclick="setEvCat('energy_bill',this)">⚡ Energy Bills</button>
+        <button class="sector-pill" onclick="setEvCat('production_log',this)">📋 Production Logs</button>
+        <button class="sector-pill" onclick="setEvCat('fuel_invoice',this)">🔥 Fuel Invoices</button>
+        <button class="sector-pill" onclick="setEvCat('emission_report',this)">📊 Emission Reports</button>
+        <button class="sector-pill" onclick="setEvCat('lab_certificate',this)">🔬 Lab Certificates</button>
+        <button class="sector-pill" onclick="setEvCat('other',this)">📄 Other</button>
+      </div>
+
+      <!-- Drop zone -->
+      <div class="dropzone section-space" id="dz" onclick="document.getElementById('dz-input').click()">
+        <input type="file" id="dz-input" multiple accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.docx,.doc" style="display:none;" onchange="handleFiles(this.files)"/>
+        <div class="dz-icon" id="dz-icon">↑</div>
+        <div class="dz-title" id="dz-title">Drag & Drop Evidence Files Here</div>
+        <div class="dz-sub">PDF · JPEG · PNG · XLSX · DOCX · Max 25MB per file</div>
+        <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;" onclick="event.stopPropagation()">
+          <span class="mono" style="font-size:9px;color:var(--t2);align-self:center;">Upload as:</span>
+          <select class="inp" id="dz-cat" style="width:auto;padding:5px 10px;font-size:10px;">
+            <option value="energy_bill">Energy Bills</option>
+            <option value="production_log">Production Logs</option>
+            <option value="fuel_invoice">Fuel Invoices</option>
+            <option value="emission_report">Emission Reports</option>
+            <option value="lab_certificate">Lab Certificates</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Article 35 checklist -->
+      <div class="card section-space">
+        <div class="card-title" style="margin-bottom:14px;">Article 35 Compliance Checklist</div>
+        <div id="ev-checklist">
+          <div class="checklist-item"><div class="cl-check" id="ec-energy"></div><div class="cl-text">Energy bills (electricity & gas consumption) · <span class="mono" style="font-size:9px;color:var(--danger);">REQUIRED</span></div></div>
+          <div class="checklist-item"><div class="cl-check" id="ec-prod"></div><div class="cl-text">Production output logs (monthly/quarterly volumes) · <span class="mono" style="font-size:9px;color:var(--danger);">REQUIRED</span></div></div>
+          <div class="checklist-item"><div class="cl-check" id="ec-fuel"></div><div class="cl-text">Fuel purchase invoices (coal / diesel / natural gas) · <span class="mono" style="font-size:9px;color:var(--danger);">REQUIRED</span></div></div>
+          <div class="checklist-item"><div class="cl-check" id="ec-emit"></div><div class="cl-text">Third-party verified emission report (ISO 14064-3) · <span class="mono" style="font-size:9px;color:var(--t2);">optional</span></div></div>
+          <div class="checklist-item"><div class="cl-check" id="ec-lab"></div><div class="cl-text">Material composition lab certificates · <span class="mono" style="font-size:9px;color:var(--t2);">optional</span></div></div>
+          <div class="checklist-item"><div class="cl-check" id="ec-other"></div><div class="cl-text">Customs entry declarations / delivery notes · <span class="mono" style="font-size:9px;color:var(--t2);">optional</span></div></div>
+        </div>
+      </div>
+
+      <!-- File list -->
+      <div class="panel" id="ev-file-panel">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--b0);">
+          <span class="card-title">Uploaded Documents — <span id="ev-file-count">0</span> files</span>
+        </div>
+        <div id="ev-files-empty" style="padding:32px;text-align:center;">
+          <p class="mono" style="font-size:10px;color:var(--t2);letter-spacing:.14em;text-transform:uppercase;">No Documents Uploaded</p>
+          <p style="font-size:13px;color:var(--t2);margin-top:8px;">Drag files into the drop zone above or click to browse.</p>
+        </div>
+        <div id="ev-file-list" style="padding:8px 20px;display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: LIABILITY MODEL ─────────────────────────────── -->
+  <div class="page" id="page-liability">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Liability Model</div>
+        <div class="page-sub">EU ETS 2026 price scenarios · Emission gap analysis · CBAM certificate obligations</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge badge-em">2026 Default Factors Applied</span>
+      </div>
+    </div>
+    <div class="page-body">
+
+      <!-- Scenario selector -->
+      <div class="card section-space">
+        <div class="card-title" style="margin-bottom:14px;">EU ETS Carbon Price Scenario</div>
+        <div class="scenario-grid" id="scenario-btns">
+          <div class="scenario-btn active" onclick="setScenario(50,this)"><div class="sc-price">€50</div><div class="sc-label">Bear</div></div>
+          <div class="scenario-btn" onclick="setScenario(65,this)"><div class="sc-price">€65</div><div class="sc-label">Base · 2026</div></div>
+          <div class="scenario-btn" onclick="setScenario(85,this)"><div class="sc-price">€85</div><div class="sc-label">Bull</div></div>
+          <div class="scenario-btn" onclick="setScenario(110,this)"><div class="sc-price">€110</div><div class="sc-label">Shock</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;margin-top:16px;border-top:1px solid var(--b0);padding-top:16px;">
+          <span class="mono" style="font-size:10px;color:var(--t2);">Custom Price:</span>
+          <input type="range" id="price-slider" min="20" max="150" value="50"
+            oninput="setScenario(+this.value,null);document.getElementById('price-disp').textContent='€'+this.value+'/t'"
+            style="flex:1;accent-color:var(--em);"/>
+          <span class="mono" style="font-size:11px;color:var(--em);min-width:70px;" id="price-disp">€50/t</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;margin-top:12px;">
+          <span class="mono" style="font-size:10px;color:var(--t2);">Carbon Credit (if origin ETS recognised):</span>
+          <input class="inp" type="number" id="free-alloc" min="0" max="100" value="0" style="width:70px;" oninput="recalcLiability()"/>
+          <span class="mono" style="font-size:10px;color:var(--t2);">% · India: 0% · EU: 100%</span>
+        </div>
+      </div>
+
+      <!-- Liability KPIs -->
+      <div class="kpi-grid section-space">
+        <div class="kpi kpi-em">
+          <div class="kpi-label">Gross Liability</div>
+          <div class="kpi-val" id="l-gross">€0</div>
+          <div class="kpi-sub" id="l-gross-sub">at €50/tCO₂e</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Net After Credits</div>
+          <div class="kpi-val" id="l-net">€0</div>
+          <div class="kpi-sub">after carbon credit offset</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Chargeable CO₂e</div>
+          <div class="kpi-val" id="l-co2">0 t</div>
+          <div class="kpi-sub" id="l-co2-sub">0% of default baseline</div>
+        </div>
+        <div class="kpi kpi-danger">
+          <div class="kpi-label">Penalty Exposure</div>
+          <div class="kpi-val" id="l-penalty">€0</div>
+          <div class="kpi-sub">max at €50/tCO₂e non-compliance</div>
+        </div>
+      </div>
+
+      <!-- Per-shipment breakdown -->
+      <div class="panel section-space">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--b0);">
+          <span class="card-title">Per-Shipment Emission Gap & Liability</span>
+        </div>
+        <div id="liab-empty" style="padding:32px;text-align:center;">
+          <p class="mono" style="font-size:10px;color:var(--t2);">No shipments logged. Return to Shipment Register.</p>
+        </div>
+        <div id="liab-table-wrap" style="display:none;overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr><th>Description</th><th>Sector</th><th>Mass (t)</th><th>Actual CO₂e</th><th>EU Default CO₂e</th><th>Gap tCO₂e</th><th>Certificates</th><th>Liability</th></tr>
+            </thead>
+            <tbody id="liab-tbody"></tbody>
+            <tfoot id="liab-tfoot"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Certificate requirement -->
+      <div class="card" style="border-color:var(--emd);background:var(--emg);">
+        <div class="card-title" style="margin-bottom:14px;">CBAM Certificate Requirement Summary</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--b0);">
+          <div style="background:var(--ink2);padding:20px;">
+            <p class="mono" style="font-size:9px;color:var(--t2);margin-bottom:8px;">Certificates Required</p>
+            <p class="display" style="font-size:32px;font-weight:700;color:var(--t0);" id="cert-qty">0</p>
+            <p class="mono" style="font-size:9px;color:var(--t2);margin-top:4px;">1 certificate = 1 tCO₂e</p>
+          </div>
+          <div style="background:var(--ink2);padding:20px;">
+            <p class="mono" style="font-size:9px;color:var(--t2);margin-bottom:8px;">Certificate Value</p>
+            <p class="display" style="font-size:32px;font-weight:700;color:var(--em);" id="cert-value">€0</p>
+            <p class="mono" style="font-size:9px;color:var(--t2);margin-top:4px;">Surrender by 31 May annually</p>
+          </div>
+          <div style="background:var(--ink2);padding:20px;">
+            <p class="mono" style="font-size:9px;color:var(--danger);margin-bottom:8px;">Non-Compliance Penalty</p>
+            <p class="display" style="font-size:32px;font-weight:700;color:var(--danger);" id="cert-penalty">€0</p>
+            <p class="mono" style="font-size:9px;color:var(--t2);margin-top:4px;">€50/tCO₂e · max exposure</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── PAGE: REPORT ─────────────────────────────────────── -->
+  <div class="page" id="page-report">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Compliance Report</div>
+        <div class="page-sub">Consolidated compliance position · Shareable with EU importer and competent authority</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨 Print / PDF</button>
+      </div>
+    </div>
+    <div class="page-body">
+
+      <!-- Report header -->
+      <div style="border:1px solid var(--b0);background:var(--ink1);padding:28px;margin-bottom:2px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+          <div>
+            <div class="wordmark" style="font-size:20px;margin-bottom:6px;">CBAM<span>bridge</span></div>
+            <p class="mono" style="font-size:10px;color:var(--t2);">CBAM Compliance Assessment Report · EU Reg. 2023/956</p>
+          </div>
+          <div style="text-align:right;">
+            <p class="mono" style="font-size:10px;color:var(--t2);">Report Generated: <span id="rpt-date">—</span></p>
+            <p class="mono" style="font-size:10px;color:var(--t2);">Reporting Year: 2026</p>
+            <p class="mono" style="font-size:10px;color:var(--em);margin-top:4px;">INDICATIVE GUIDANCE ONLY</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status grid -->
+      <div class="kpi-grid section-space" style="margin-top:2px;">
+        <div class="kpi">
+          <div class="kpi-label">Registration Required</div>
+          <div class="kpi-val" id="rpt-reg" style="font-size:20px;">—</div>
+          <div class="kpi-sub" id="rpt-reg-sub">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Total Import Mass</div>
+          <div class="kpi-val" id="rpt-mass">0 t</div>
+          <div class="kpi-sub">Annual cumulative (all CBAM sectors)</div>
+        </div>
+        <div class="kpi kpi-em">
+          <div class="kpi-label">Estimated Net Liability</div>
+          <div class="kpi-val" id="rpt-liab">€0</div>
+          <div class="kpi-sub" id="rpt-liab-sub">at base scenario</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Certificates to Surrender</div>
+          <div class="kpi-val" id="rpt-certs">0</div>
+          <div class="kpi-sub">Due 31 May each year</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Evidence Completeness</div>
+          <div class="kpi-val" id="rpt-ev">0%</div>
+          <div class="kpi-sub" id="rpt-ev-sub">—</div>
+        </div>
+        <div class="kpi kpi-danger">
+          <div class="kpi-label">Days to Deadline</div>
+          <div class="kpi-val" id="rpt-days">—</div>
+          <div class="kpi-sub">31 March 2026 · Declarant Registration</div>
+        </div>
+      </div>
+
+      <!-- Action plan -->
+      <div class="card section-space">
+        <div class="card-title" style="margin-bottom:16px;">Priority Action Plan</div>
+        <div id="action-plan">
+          <p class="mono" style="font-size:10px;color:var(--t2);">Log shipments and run the compliance workflow to generate your action plan.</p>
+        </div>
+      </div>
+
+      <!-- Disclaimer -->
+      <div style="border:1px solid var(--b0);padding:16px 20px;background:var(--ink1);">
+        <p class="mono" style="font-size:9px;color:var(--t2);line-height:1.8;">
+          DISCLAIMER: This report provides indicative guidance based on EU Reg. 2023/956 and CBAM Omnibus Delegated Acts 2024/2025.
+          It does not constitute legal or tax advice. Liability figures are estimates only. Consult a qualified EU trade compliance advisor
+          before making regulatory submissions. CBAMbridge accepts no liability for decisions made based on this report.
+          CBAMbridge.com · Built on EU primary legislation · Updated quarterly.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: SETTINGS ───────────────────────────────────── -->
+  <div class="page" id="page-settings">
+    <div class="page-header">
+      <div><div class="page-title">Settings</div>
+      <div class="page-sub">Facility profile · Notification preferences · Data management</div></div>
+    </div>
+    <div class="page-body">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px;">Facility Profile</div>
+          <div class="field"><label class="field-label">Company Name</label><input class="inp" placeholder="Your Manufacturing Company" id="s-company"/></div>
+          <div class="field"><label class="field-label">EU Importer Name</label><input class="inp" placeholder="European trading partner or subsidiary" id="s-importer"/></div>
+          <div class="field"><label class="field-label">EU EORI Number</label><input class="inp" placeholder="EU followed by 15 digits" id="s-eori"/></div>
+          <div class="field"><label class="field-label">Contact Email</label><input class="inp" type="email" placeholder="compliance@yourcompany.com" id="s-email"/></div>
+          <button class="btn btn-em btn-sm">Save Profile</button>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px;">Data Management</div>
+          <p style="font-size:13px;color:var(--t1);margin-bottom:16px;">All data is stored locally in your browser session. No production data is transmitted to external servers without explicit export.</p>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="btn btn-outline btn-sm" onclick="exportData()">⬇ Export All Data (JSON)</button>
+            <button class="btn btn-danger btn-sm" onclick="clearAllData()">🗑 Clear All Data</button>
+          </div>
+          <div class="divider"></div>
+          <div class="card-title" style="margin-bottom:12px;">ETS Price Reference</div>
+          <p class="mono" style="font-size:10px;color:var(--t2);">Base scenario: €65/tCO₂e · Updated Q1 2026</p>
+          <p class="mono" style="font-size:10px;color:var(--t2);margin-top:4px;">Source: EU ETS forward curve · ECX/ICE</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ═══════════════════════════════════════════════════════
+     CONTEXT PANEL
+═══════════════════════════════════════════════════════ -->
+<aside id="ctx-panel">
+  <!-- Deadline countdown -->
+  <div class="ctx-section">
+    <div class="ctx-title">Registration Deadline</div>
+    <div class="reg-countdown">
+      <div class="reg-days" id="ctx-days">—</div>
+      <div class="reg-label">Days Remaining</div>
+      <div class="reg-date">31 March 2026 · 23:59 UTC</div>
+    </div>
+    <div class="reg-bar">
+      <div class="reg-fill" id="ctx-deadline-bar" style="width:100%;"></div>
+    </div>
+    <p class="mono" style="font-size:9px;color:var(--t2);margin-top:6px;">Authorized Declarant registration window</p>
+  </div>
+
+  <!-- Live ETS ticker -->
+  <div class="ctx-section">
+    <div class="ctx-title">EU ETS Reference Price</div>
+    <div class="ets-ticker">
+      <div class="ets-price">€65.00</div>
+      <div>
+        <div class="ets-unit">/tCO₂e</div>
+        <div class="ets-change">2026 Base</div>
+      </div>
+    </div>
+    <p class="mono" style="font-size:9px;color:var(--t2);">Indicative forward price · ICE ECX · Updated quarterly</p>
+  </div>
+
+  <!-- Live position -->
+  <div class="ctx-section">
+    <div class="ctx-title">Current Position</div>
+    <div class="ctx-metric"><span class="ctx-mkey">Import Mass</span><span class="ctx-mval ctx-mval-em" id="ctx-mass">0.00 t</span></div>
+    <div class="ctx-metric"><span class="ctx-mkey">Shipments</span><span class="ctx-mval" id="ctx-ships">0</span></div>
+    <div class="ctx-metric"><span class="ctx-mkey">Est. Liability</span><span class="ctx-mval ctx-mval-em" id="ctx-liab">€0</span></div>
+    <div class="ctx-metric"><span class="ctx-mkey">Certificates</span><span class="ctx-mval" id="ctx-certs">0</span></div>
+    <div class="ctx-metric"><span class="ctx-mkey">Evidence Files</span><span class="ctx-mval" id="ctx-ev">0</span></div>
+  </div>
+
+  <!-- Sectors covered -->
+  <div class="ctx-section">
+    <div class="ctx-title">CBAM Sector Coverage</div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;" id="ctx-sectors">
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--b0);">
+        <span style="color:var(--t2);">Steel & Iron</span><span class="mono" style="color:var(--t2);">2.04 tCO₂e/t</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--b0);">
+        <span style="color:var(--t2);">Aluminium</span><span class="mono" style="color:var(--t2);">8.51 tCO₂e/t</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--b0);">
+        <span style="color:var(--t2);">Cement</span><span class="mono" style="color:var(--t2);">0.886 tCO₂e/t</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--b0);">
+        <span style="color:var(--t2);">Fertilizers</span><span class="mono" style="color:var(--t2);">2.32 tCO₂e/t</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--b0);">
+        <span style="color:var(--t2);">Electricity</span><span class="mono" style="color:var(--t2);">0.465 tCO₂e/MWh</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;">
+        <span style="color:var(--t2);">Hydrogen</span><span class="mono" style="color:var(--t2);">5.53 tCO₂e/t</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick links -->
+  <div class="ctx-section">
+    <div class="ctx-title">Regulatory References</div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">
+      <a href="https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32023R0956" target="_blank" style="font-size:11px;color:var(--em);padding:3px 0;">EU Reg. 2023/956 ↗</a>
+      <a href="https://taxation-customs.ec.europa.eu/carbon-border-adjustment-mechanism_en" target="_blank" style="font-size:11px;color:var(--em);padding:3px 0;">EC CBAM Portal ↗</a>
+      <a href="https://cbam.ec.europa.eu" target="_blank" style="font-size:11px;color:var(--em);padding:3px 0;">CBAM Registry ↗</a>
+    </div>
+  </div>
+</aside>
+
+</div><!-- /shell -->
+
+<script>
+'use strict';
+/* ══════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════ */
+var state = {
+  shipments: [],
+  evidenceFiles: [],
+  carbonPrice: 50,
+  freeAlloc: 0,
+  liabilityRun: false,
+  reportViewed: false
+};
+
+var SECTOR_EF = {
+  steel:{ef:2.04,label:'Steel & Iron',unit:'t'},
+  aluminum:{ef:8.51,label:'Aluminium',unit:'t'},
+  cement:{ef:0.886,label:'Cement',unit:'t'},
+  fertilizers:{ef:2.32,label:'Fertilizers',unit:'t'},
+  electricity:{ef:0.465,label:'Electricity',unit:'MWh'},
+  hydrogen:{ef:5.53,label:'Hydrogen',unit:'t'}
+};
+
+var SECTOR_HINTS = {
+  steel:'Default EF: 2.04 tCO₂e/t · HS: 7206, 7207, 7208, 7216',
+  aluminum:'Default EF: 8.51 tCO₂e/t · HS: 7601, 7603, 7604',
+  cement:'Default EF: 0.886 tCO₂e/t · HS: 2523, 2520',
+  fertilizers:'Default EF: 2.32 tCO₂e/t · HS: 3102, 3105',
+  electricity:'Default EF: 0.465 tCO₂e/MWh · HS: 2716',
+  hydrogen:'Default EF: 5.53 tCO₂e/t · HS: 2804'
+};
+
+var evCategory = 'all';
+var editId = null;
+
+/* ══════════════════════════════════════════════════════
+   CURSOR
+══════════════════════════════════════════════════════ */
+(function(){
+  var c=document.getElementById('cur'),r=document.getElementById('cur-r');
+  var mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;c.style.left=mx+'px';c.style.top=my+'px';},{passive:true});
+  (function loop(){rx+=(mx-rx)*.1;ry+=(my-ry)*.1;r.style.left=rx+'px';r.style.top=ry+'px';requestAnimationFrame(loop);})();
+  document.addEventListener('mouseover',function(e){
+    if(e.target.matches('a,button,input,select,.sb-item,.scenario-btn,.sector-pill,.dropzone,.step-item')){
+      c.style.width='4px';c.style.height='4px';r.style.width='40px';r.style.height='40px';
+    }else{c.style.width='7px';c.style.height='7px';r.style.width='26px';r.style.height='26px';}
+  });
+})();
+
+/* ══════════════════════════════════════════════════════
+   DEADLINE
+══════════════════════════════════════════════════════ */
+function daysLeft(){return Math.max(0,Math.ceil((new Date('2026-03-31T23:59:59Z')-new Date())/864e5));}
+var DL = daysLeft();
+['top-days','ctx-days','hds3'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=DL;});
+// deadline bar: proportion of 365 days from Oct 1 2025 start
+var dlPct = Math.max(5, (DL/182)*100);
+var dlBar = document.getElementById('ctx-deadline-bar');
+if(dlBar) dlBar.style.width = Math.min(100,dlPct)+'%';
+// set report date
+var rptDate = document.getElementById('rpt-date');
+if(rptDate) rptDate.textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+
+/* ══════════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════════ */
+var PAGE_LABELS = {
+  overview:'Dashboard',register:'Shipment Register',threshold:'Threshold Analysis',
+  evidence:'Evidence Vault',liability:'Liability Model',report:'Compliance Report',settings:'Settings'
+};
+function nav(pageId){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  var pg = document.getElementById('page-'+pageId);
+  if(pg) pg.classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(function(btn){
+    btn.classList.toggle('active', btn.getAttribute('onclick')==="nav('"+pageId+"')");
+  });
+  var bc = document.getElementById('bc-current');
+  if(bc) bc.textContent = PAGE_LABELS[pageId]||pageId;
+  if(pageId==='liability') recalcLiability();
+  if(pageId==='threshold') renderThreshold();
+  if(pageId==='report'){state.reportViewed=true;updateReadiness();renderReport();}
+  if(pageId==='overview') renderOverview();
+}
+
+/* ══════════════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════════════ */
+function genId(){return Date.now()+'-'+Math.random().toString(36).slice(2,8);}
+function fmtMass(t){return t>=1000?(t/1000).toFixed(2)+' kt':t.toFixed(2)+' t';}
+function fmtEur(v){return v>=1e6?'€'+(v/1e6).toFixed(2)+'M':v>=1000?'€'+(v/1000).toFixed(1)+'k':'€'+Math.round(v).toLocaleString();}
+function fmtCO2(t){return t>=1000?(t/1000).toFixed(2)+' kt CO₂e':t.toFixed(2)+' tCO₂e';}
+function fmtFileSize(b){return b<1024?b+' B':b<1024*1024?(b/1024).toFixed(1)+' KB':(b/1e6).toFixed(2)+' MB';}
+function totalMass(){return state.shipments.reduce(function(s,x){return s+x.massT;},0);}
+function emissionsForShipment(s){var cfg=SECTOR_EF[s.sector];if(!cfg)return 0;var ef=s.hasActualData&&s.actualEF?s.actualEF:cfg.ef;return s.massT*ef;}
+function defaultEmissionsForShipment(s){var cfg=SECTOR_EF[s.sector];if(!cfg)return 0;return s.massT*cfg.ef;}
+function totalEmissions(){return state.shipments.reduce(function(sum,s){return sum+emissionsForShipment(s);},0);}
+function totalLiability(price,freeAlloc){var e=totalEmissions();var gross=e*(price||state.carbonPrice);var credit=gross*(freeAlloc||state.freeAlloc)/100;return Math.max(0,gross-credit);}
+
+/* ══════════════════════════════════════════════════════
+   OVERVIEW
+══════════════════════════════════════════════════════ */
+function renderOverview(){
+  var mass=totalMass();
+  var pct=Math.min(100,(mass/50)*100);
+  var exceeded=mass>50;
+  var em=totalEmissions();
+  var liab=totalLiability(state.carbonPrice,state.freeAlloc);
+
+  set('kpi-mass-val',fmtMass(mass));
+  set('kpi-mass-sub',pct.toFixed(1)+'% of 50t threshold');
+  set('kpi-liab-val',fmtEur(liab));
+  set('kpi-cert-val',Math.ceil(em).toLocaleString());
+  set('kpi-ship-val',state.shipments.length);
+  set('kpi-days-val','T−'+DL);
+  var sectors=new Set(state.shipments.map(function(s){return s.sector;}));
+  set('kpi-sectors',sectors.size);
+
+  var gf=document.getElementById('gauge-fill');
+  if(gf){gf.style.width=pct+'%';gf.style.background=exceeded?'var(--danger)':pct>70?'var(--warn)':'var(--em)';}
+  set('gauge-num',mass.toFixed(2));
+
+  var tb=document.getElementById('thresh-badge-small');
+  if(tb){
+    if(exceeded){tb.className='badge badge-danger';tb.textContent='⚠ Threshold Exceeded';}
+    else if(pct>70){tb.className='badge badge-warn';tb.textContent='Warning Zone';}
+    else{tb.className='badge badge-em';tb.textContent='Safe';}
+  }
+
+  var da=document.getElementById('dash-alert');
+  if(da) da.style.display=exceeded?'block':'none';
+
+  // sector pills
+  var sp=document.getElementById('sector-pills');
+  if(sp){
+    sp.innerHTML='';
+    var byS={};
+    state.shipments.forEach(function(s){byS[s.sector]=(byS[s.sector]||0)+s.massT;});
+    Object.entries(byS).forEach(function(kv){
+      var el=document.createElement('span');
+      el.className='sector-pill active';
+      el.textContent=SECTOR_EF[kv[0]].label+' '+fmtMass(kv[1]);
+      sp.appendChild(el);
+    });
+  }
+
+  // readiness score
+  var checks=[
+    state.shipments.length>0,
+    mass>0,
+    state.evidenceFiles.length>=3,
+    state.liabilityRun,
+    state.reportViewed
+  ];
+  var score=Math.round((checks.filter(Boolean).length/checks.length)*100);
+  set('score-num',score);
+  var circ=document.getElementById('score-circle');
+  if(circ){var offset=251.2*(1-score/100);circ.style.strokeDashoffset=offset;}
+  // check items
+  var cks=['ck-shipments','ck-threshold','ck-evidence','ck-liability','ck-report'];
+  var txts=['ck-shipments-txt','ck-threshold-txt','ck-evidence-txt','ck-liability-txt','ck-report-txt'];
+  checks.forEach(function(done,i){
+    var el=document.getElementById(cks[i]);
+    var tx=document.getElementById(txts[i]);
+    if(el){el.classList.toggle('done',done);}
+    if(tx){tx.classList.toggle('done',done);}
+  });
+
+  // evidence completeness
+  var evTotal=6,evDone=countEvCategories();
+  var evPct=Math.round((evDone/evTotal)*100);
+  set('kpi-ev-val',evPct+'%');
+  set('kpi-ev-sub',evDone+' of 6 required categories');
+
+  // recent shipments
+  var empty=document.getElementById('dash-shipments-empty');
+  var tbl=document.getElementById('dash-shipments-table');
+  var tbody=document.getElementById('dash-ship-body');
+  if(state.shipments.length===0){if(empty)empty.style.display='block';if(tbl)tbl.style.display='none';}
+  else{
+    if(empty)empty.style.display='none';if(tbl)tbl.style.display='block';
+    if(tbody){
+      tbody.innerHTML='';
+      state.shipments.slice(-5).reverse().forEach(function(s){
+        var ef=emissionsForShipment(s);
+        var liab=ef*state.carbonPrice;
+        var tr=document.createElement('tr');
+        tr.innerHTML='<td class="tbl-t0">'+s.desc+'</td><td class="tbl-mono">'+SECTOR_EF[s.sector].label+'</td><td class="tbl-mono">'+fmtMass(s.massT)+'</td><td>'+s.country+'</td><td class="tbl-mono">'+s.date+'</td><td><span class="badge '+(s.hasActualData?'badge-em':'badge-neutral')+'">'+(s.hasActualData?'Actual':'EU Default')+'</span></td><td class="tbl-em">'+fmtEur(liab)+'</td>';
+        tbody.appendChild(tr);
+      });
+    }
+  }
+
+  updateSidebarCounts();
+  updateContextPanel();
+}
+
+function countEvCategories(){
+  var cats=new Set(state.evidenceFiles.map(function(f){return f.category;}));
+  return cats.size;
+}
+
+/* ══════════════════════════════════════════════════════
+   SHIPMENTS
+══════════════════════════════════════════════════════ */
+function openShipmentForm(id){
+  editId=id||null;
+  var fw=document.getElementById('ship-form-wrap');
+  var title=document.getElementById('ship-form-title');
+  if(fw)fw.style.display='block';
+  if(id){
+    var s=state.shipments.find(function(x){return x.id===id;});
+    if(!s)return;
+    if(title)title.textContent='Edit Shipment Entry';
+    document.getElementById('sf-desc').value=s.desc;
+    document.getElementById('sf-sector').value=s.sector;
+    document.getElementById('sf-country').value=s.country;
+    document.getElementById('sf-mass').value=s.massT;
+    document.getElementById('sf-hs').value=s.hs||'';
+    document.getElementById('sf-date').value=s.date;
+    document.getElementById('sf-actual-toggle').checked=s.hasActualData;
+    if(s.hasActualData){document.getElementById('sf-actual-wrap').style.display='block';document.getElementById('sf-ef').value=s.actualEF||'';}
+    updateSectorHint();
+  } else {
+    if(title)title.textContent='Log New Shipment Entry';
+    document.getElementById('sf-desc').value='';
+    document.getElementById('sf-mass').value='';
+    document.getElementById('sf-hs').value='';
+    document.getElementById('sf-date').value=new Date().toISOString().split('T')[0];
+    document.getElementById('sf-actual-toggle').checked=false;
+    document.getElementById('sf-actual-wrap').style.display='none';
+    document.getElementById('sf-ef').value='';
+    updateSectorHint();
+  }
+}
+function closeShipmentForm(){document.getElementById('ship-form-wrap').style.display='none';editId=null;}
+function updateSectorHint(){
+  var s=document.getElementById('sf-sector').value;
+  var h=document.getElementById('sector-hint');
+  if(h)h.textContent=SECTOR_HINTS[s]||'';
+  var el=document.getElementById('sf-ef-label');
+  if(el)el.textContent='Actual Emission Factor (tCO₂e / '+(SECTOR_EF[s]?SECTOR_EF[s].unit:'unit')+')';
+}
+function toggleActualEF(){
+  var checked=document.getElementById('sf-actual-toggle').checked;
+  document.getElementById('sf-actual-wrap').style.display=checked?'block':'none';
+}
+function saveShipment(){
+  var desc=document.getElementById('sf-desc').value.trim();
+  var sector=document.getElementById('sf-sector').value;
+  var country=document.getElementById('sf-country').value;
+  var massRaw=parseFloat(document.getElementById('sf-mass').value)||0;
+  var unit=document.getElementById('sf-unit').value;
+  var massT=unit==='kg'?massRaw/1000:massRaw;
+  var hs=document.getElementById('sf-hs').value.trim();
+  var date=document.getElementById('sf-date').value;
+  var hasActual=document.getElementById('sf-actual-toggle').checked;
+  var actualEF=hasActual?parseFloat(document.getElementById('sf-ef').value)||null:null;
+  if(!desc||massT<=0)return;
+  var entry={id:editId||genId(),desc:desc,sector:sector,country:country,massT:massT,hs:hs,date:date,hasActualData:hasActual,actualEF:actualEF};
+  if(editId){state.shipments=state.shipments.map(function(s){return s.id===editId?entry:s;});}
+  else{state.shipments.push(entry);}
+  editId=null;
+  closeShipmentForm();
+  renderShipments();
+  renderOverview();
+}
+function deleteShipment(id){
+  state.shipments=state.shipments.filter(function(s){return s.id!==id;});
+  renderShipments();renderOverview();
+}
+function renderShipments(){
+  var filter=document.getElementById('filter-sector')?document.getElementById('filter-sector').value:'';
+  var filtered=filter?state.shipments.filter(function(s){return s.sector===filter;}):state.shipments;
+  var empty=document.getElementById('ship-empty');
+  var wrap=document.getElementById('ship-table-wrap');
+  var tbody=document.getElementById('ship-tbody');
+  var lbl=document.getElementById('ship-count-label');
+  if(lbl)lbl.textContent=state.shipments.length+' '+(state.shipments.length===1?'entry':'entries');
+  if(filtered.length===0){if(empty)empty.style.display='block';if(wrap)wrap.style.display='none';updateRegGauge();return;}
+  if(empty)empty.style.display='none';if(wrap)wrap.style.display='block';
+  if(tbody){
+    tbody.innerHTML='';
+    filtered.forEach(function(s,i){
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td class="tbl-mono tbl-t0">'+(i+1).toString().padStart(2,'0')+'</td><td class="tbl-t0">'+s.desc+'</td><td class="tbl-mono">'+SECTOR_EF[s.sector].label+'</td><td class="tbl-mono tbl-t0">'+fmtMass(s.massT)+'</td><td>'+s.country+'</td><td class="tbl-mono">'+(s.hs||'—')+'</td><td class="tbl-mono">'+s.date+'</td><td><span class="badge '+(s.hasActualData?'badge-em':'badge-neutral')+'">'+(s.hasActualData?'Actual EF':'EU Default')+'</span></td><td style="white-space:nowrap;"><button class="btn btn-outline btn-xs" style="margin-right:4px;" onclick="openShipmentForm(\''+s.id+'\')">edit</button><button class="btn btn-danger btn-xs" onclick="deleteShipment(\''+s.id+'\')">del</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+  updateRegGauge();
+}
+function updateRegGauge(){
+  var mass=totalMass();var pct=Math.min(100,(mass/50)*100);
+  var g=document.getElementById('reg-gauge');
+  var lbl=document.getElementById('reg-total-mass');
+  var badge=document.getElementById('reg-thresh-badge');
+  if(g){g.style.width=pct+'%';g.style.background=mass>50?'var(--danger)':pct>70?'var(--warn)':'var(--em)';}
+  if(lbl)lbl.textContent=fmtMass(mass);
+  if(badge){
+    if(mass>50){badge.className='badge badge-danger';badge.textContent='⚠ Exceeded';}
+    else if(pct>70){badge.className='badge badge-warn';badge.textContent='Warning Zone';}
+    else{badge.className='badge badge-em';badge.textContent='Below Threshold';}
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   THRESHOLD PAGE
+══════════════════════════════════════════════════════ */
+function renderThreshold(){
+  var mass=totalMass();var pct=Math.min(100,(mass/50)*100);var exceeded=mass>50;
+  set('th-big-num',mass.toFixed(2));set('th-pct',pct.toFixed(1)+'%');
+  var gap=50-mass;
+  set('th-gap-label',exceeded?'Overage':'Headroom Remaining');
+  set('th-gap',(exceeded?'+':'')+fmtMass(Math.abs(gap)));
+  var tg=document.getElementById('th-gauge');
+  if(tg){tg.style.width=pct+'%';tg.style.height='12px';tg.style.background=exceeded?'var(--danger)':pct>70?'var(--warn)':'var(--em)';}
+  // alert
+  var aw=document.getElementById('thresh-alert-wrap');
+  if(aw){
+    if(exceeded){aw.innerHTML='<div class="alert alert-critical"><span class="alert-icon">⚠</span><div><div class="alert-title">Critical — 50t Threshold Exceeded</div><div class="alert-body">Your cumulative import mass of <strong>'+fmtMass(mass)+'</strong> exceeds the CBAM registration threshold. Register as Authorized CBAM Declarant by <strong>31 March 2026</strong>.</div></div></div>';}
+    else if(pct>70){aw.innerHTML='<div class="alert alert-warn"><span class="alert-icon">◈</span><div><div class="alert-title">Warning — Approaching Threshold</div><div class="alert-body">You are at '+pct.toFixed(0)+'% of the 50-tonne threshold. Begin compliance preparation and monitor import volumes closely.</div></div></div>';}
+    else{aw.innerHTML='<div class="alert alert-ok"><span class="alert-icon">✓</span><div><div class="alert-title">Below Threshold</div><div class="alert-body">Current imports ('+fmtMass(mass)+') are below the 50-tonne registration trigger. Continue monitoring as volumes accumulate through 2026.</div></div></div>';}
+  }
+  // sector breakdown
+  var sbd=document.getElementById('th-sector-breakdown');
+  if(sbd){
+    if(state.shipments.length===0){sbd.innerHTML='<p class="mono" style="font-size:10px;color:var(--t2);">No shipments logged.</p>';return;}
+    var byS={};state.shipments.forEach(function(s){byS[s.sector]=(byS[s.sector]||0)+s.massT;});
+    var html='';
+    Object.entries(byS).forEach(function(kv){
+      var spct=mass>0?(kv[1]/mass)*100:0;
+      html+='<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="font-size:13px;color:var(--t0);">'+SECTOR_EF[kv[0]].label+'</span><span class="mono" style="font-size:11px;color:var(--em);">'+fmtMass(kv[1])+'</span></div><div class="gauge-track"><div class="gauge-fill" style="width:'+spct+'%;background:var(--em);"></div></div></div>';
+    });
+    sbd.innerHTML=html;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   EVIDENCE VAULT
+══════════════════════════════════════════════════════ */
+var dz=document.getElementById('dz');
+if(dz){
+  dz.addEventListener('dragover',function(e){e.preventDefault();dz.classList.add('drag-over');});
+  dz.addEventListener('dragleave',function(){dz.classList.remove('drag-over');});
+  dz.addEventListener('drop',function(e){e.preventDefault();dz.classList.remove('drag-over');handleFiles(e.dataTransfer.files);});
+}
+function handleFiles(files){
+  var cat=document.getElementById('dz-cat').value;
+  Array.from(files).forEach(function(f){
+    if(f.size>25*1024*1024)return;
+    state.evidenceFiles.push({id:genId(),name:f.name,size:fmtFileSize(f.size),cat:cat,status:'pending',date:new Date().toLocaleDateString('en-GB')});
+  });
+  renderEvidenceFiles();
+  updateEvChecklist();
+  updateSidebarCounts();
+  updateContextPanel();
+}
+function setEvCat(cat,btn){
+  evCategory=cat;
+  document.querySelectorAll('#ev-cat-tabs .sector-pill').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  renderEvidenceFiles();
+}
+function renderEvidenceFiles(){
+  var filtered=evCategory==='all'?state.evidenceFiles:state.evidenceFiles.filter(function(f){return f.cat===evCategory;});
+  var empty=document.getElementById('ev-files-empty');
+  var list=document.getElementById('ev-file-list');
+  var cnt=document.getElementById('ev-file-count');
+  if(cnt)cnt.textContent=state.evidenceFiles.length;
+  var evDone=countEvCategories();
+  var completeness=Math.round((evDone/6)*100);
+  set('ev-completeness-label',state.evidenceFiles.length+' files · '+completeness+'% complete');
+  if(filtered.length===0){if(empty)empty.style.display='block';if(list)list.style.display='none';return;}
+  if(empty)empty.style.display='none';if(list)list.style.display='block';
+  if(list){
+    list.innerHTML='';
+    filtered.forEach(function(f){
+      var ext=f.name.split('.').pop().toUpperCase().slice(0,4);
+      var row=document.createElement('div');
+      row.className='file-row';
+      row.innerHTML='<div class="file-ext">'+ext+'</div><div><p style="font-size:13px;color:var(--t0);">'+f.name+'</p><p class="mono" style="font-size:9px;color:var(--t2);">'+f.size+' · '+f.date+'</p></div><span class="badge '+(f.status==='verified'?'badge-ok':f.status==='rejected'?'badge-danger':'badge-neutral')+'">'+f.status+'</span><div style="display:flex;gap:6px;"><button class="btn btn-outline btn-xs" onclick="verifyFile(\''+f.id+'\')">✓ Verify</button></div><button class="btn btn-danger btn-xs" onclick="deleteFile(\''+f.id+'\')">✕</button>';
+      list.appendChild(row);
+    });
+  }
+}
+function verifyFile(id){
+  state.evidenceFiles=state.evidenceFiles.map(function(f){return f.id===id?Object.assign({},f,{status:'verified'}):f;});
+  renderEvidenceFiles();updateEvChecklist();
+}
+function deleteFile(id){
+  state.evidenceFiles=state.evidenceFiles.filter(function(f){return f.id!==id;});
+  renderEvidenceFiles();updateEvChecklist();updateSidebarCounts();updateContextPanel();
+}
+function updateEvChecklist(){
+  var cats=new Set(state.evidenceFiles.map(function(f){return f.cat;}));
+  var map={energy_bill:'ec-energy',production_log:'ec-prod',fuel_invoice:'ec-fuel',emission_report:'ec-emit',lab_certificate:'ec-lab',other:'ec-other'};
+  Object.entries(map).forEach(function(kv){var el=document.getElementById(kv[1]);if(el)el.classList.toggle('done',cats.has(kv[0]));});
+}
+
+/* ══════════════════════════════════════════════════════
+   LIABILITY MODEL
+══════════════════════════════════════════════════════ */
+function setScenario(price,btn){
+  state.carbonPrice=price;
+  document.getElementById('price-slider').value=price;
+  document.getElementById('price-disp').textContent='€'+price+'/t';
+  if(btn){document.querySelectorAll('.scenario-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');}
+  recalcLiability();
+}
+function recalcLiability(){
+  state.freeAlloc=parseInt(document.getElementById('free-alloc').value)||0;
+  var totalE=totalEmissions();
+  var totalD=state.shipments.reduce(function(s,x){return s+defaultEmissionsForShipment(x);},0);
+  var gross=totalE*state.carbonPrice;
+  var credit=gross*(state.freeAlloc/100);
+  var net=Math.max(0,gross-credit);
+  var pct=totalD>0?(totalE/totalD)*100:0;
+  set('l-gross',fmtEur(gross));
+  set('l-gross-sub','at €'+state.carbonPrice+'/tCO₂e');
+  set('l-net',fmtEur(net));
+  set('l-co2',fmtCO2(totalE));
+  set('l-co2-sub',pct.toFixed(0)+'% of default baseline');
+  set('l-penalty',fmtEur(totalE*50));
+  set('cert-qty',Math.ceil(totalE).toLocaleString());
+  set('cert-value',fmtEur(net));
+  set('cert-penalty',fmtEur(totalE*50));
+  // table
+  var empty=document.getElementById('liab-empty');
+  var wrap=document.getElementById('liab-table-wrap');
+  var tbody=document.getElementById('liab-tbody');
+  var tfoot=document.getElementById('liab-tfoot');
+  if(state.shipments.length===0){if(empty)empty.style.display='block';if(wrap)wrap.style.display='none';state.liabilityRun=false;return;}
+  state.liabilityRun=true;
+  if(empty)empty.style.display='none';if(wrap)wrap.style.display='block';
+  if(tbody){
+    tbody.innerHTML='';
+    state.shipments.forEach(function(s){
+      var actual=emissionsForShipment(s);var def=defaultEmissionsForShipment(s);var gap=actual-def;var liab=actual*state.carbonPrice*(1-state.freeAlloc/100);
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td class="tbl-t0">'+s.desc+'</td><td class="tbl-mono">'+SECTOR_EF[s.sector].label+'</td><td class="tbl-mono">'+s.massT.toFixed(2)+'</td><td class="tbl-mono">'+actual.toFixed(2)+'</td><td class="tbl-mono">'+def.toFixed(2)+'</td><td class="tbl-mono '+(gap>0?'tbl-danger':'tbl-em')+'">'+(gap>0?'+':'')+gap.toFixed(2)+'</td><td class="tbl-mono">'+Math.ceil(actual)+'</td><td class="tbl-em">'+fmtEur(liab)+'</td>';
+      tbody.appendChild(tr);
+    });
+  }
+  if(tfoot){
+    tfoot.innerHTML='<tr style="border-top:2px solid var(--emd);background:var(--emg);"><td colspan="3" class="tbl-mono" style="color:var(--em);padding:12px 16px;">TOTAL</td><td class="tbl-mono tbl-t0">'+fmtCO2(totalE)+'</td><td class="tbl-mono tbl-t0">'+fmtCO2(totalD)+'</td><td class="tbl-mono tbl-em">'+fmtCO2(totalE-totalD)+'</td><td class="tbl-mono tbl-t0">'+Math.ceil(totalE)+'</td><td class="tbl-em" style="font-size:14px;font-weight:600;">'+fmtEur(net)+'</td></tr>';
+  }
+  updateContextPanel();
+  updateReadiness();
+  renderOverview();
+}
+
+/* ══════════════════════════════════════════════════════
+   REPORT
+══════════════════════════════════════════════════════ */
+function renderReport(){
+  var mass=totalMass();var exceeded=mass>50;
+  var em=totalEmissions();var net=totalLiability(state.carbonPrice,state.freeAlloc);
+  var evDone=countEvCategories();var evPct=Math.round((evDone/6)*100);
+  set('rpt-reg',exceeded?'YES':'NOT YET');
+  set('rpt-reg-sub',exceeded?'Register by 31 March 2026':fmtMass(50-mass)+' below threshold');
+  set('rpt-mass',fmtMass(mass));
+  set('rpt-liab',fmtEur(net));
+  set('rpt-liab-sub','at €'+state.carbonPrice+'/tCO₂e · '+state.freeAlloc+'% credit');
+  set('rpt-certs',Math.ceil(em).toLocaleString());
+  set('rpt-ev',evPct+'%');
+  set('rpt-ev-sub',evDone+' of 6 document categories uploaded');
+  set('rpt-days','T−'+DL);
+
+  var ap=document.getElementById('action-plan');
+  if(ap){
+    var items=[];
+    if(exceeded)items.push({level:'CRITICAL',color:'var(--danger)',text:'Register as Authorized CBAM Declarant via your EU importer\'s national competent authority. Deadline: <strong>31 March 2026</strong>.'});
+    var pendingEv=state.evidenceFiles.filter(function(f){return f.status==='pending';}).length;
+    if(pendingEv>0)items.push({level:'HIGH',color:'var(--warn)',text:pendingEv+' evidence files pending verification. Mark documents as verified after third-party review.'});
+    if(evDone<3)items.push({level:'HIGH',color:'var(--warn)',text:'Upload minimum 3 required evidence categories: Energy Bills, Production Logs, and Fuel Invoices.'});
+    items.push({level:'STANDARD',color:'var(--em)',text:'Engage an ISO 14064-3 accredited verifier to authenticate emission data before annual declaration.'});
+    items.push({level:'STANDARD',color:'var(--em)',text:'Review all HS codes against CBAM Annex I to confirm complete import coverage.'});
+    if(!items.length)items.push({level:'INFO',color:'var(--t2)',text:'Complete all compliance workflow steps to generate your action plan.'});
+    ap.innerHTML=items.map(function(it){return '<div style="display:flex;gap:12px;border-left:2px solid '+it.color+';padding:10px 16px;margin-bottom:8px;background:rgba(0,0,0,.2);"><span class="mono" style="font-size:9px;color:'+it.color+';letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;min-width:70px;">'+it.level+'</span><p style="font-size:13px;color:var(--t1);line-height:1.65;">'+it.text+'</p></div>';}).join('');
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   SIDEBAR & CONTEXT UPDATES
+══════════════════════════════════════════════════════ */
+function updateSidebarCounts(){
+  var sc=document.getElementById('sb-ship-count');if(sc)sc.textContent=state.shipments.length;
+  var ec=document.getElementById('sb-ev-count');if(ec)ec.textContent=state.evidenceFiles.length;
+  var tb=document.getElementById('sb-thresh-badge');
+  var mass=totalMass();
+  if(tb){tb.style.display=mass>50?'inline-block':'none';if(mass>50){tb.className='sb-badge';tb.textContent='!';}}
+}
+function updateContextPanel(){
+  var mass=totalMass();
+  set('ctx-mass',fmtMass(mass));
+  set('ctx-ships',state.shipments.length);
+  set('ctx-liab',fmtEur(totalLiability(state.carbonPrice,state.freeAlloc)));
+  set('ctx-certs',Math.ceil(totalEmissions()));
+  set('ctx-ev',state.evidenceFiles.length);
+}
+function updateReadiness(){
+  var checks=[state.shipments.length>0,totalMass()>0,state.evidenceFiles.length>=3,state.liabilityRun,state.reportViewed];
+  var score=Math.round((checks.filter(Boolean).length/checks.length)*100);
+  var circ=document.getElementById('score-circle');if(circ){var offset=251.2*(1-score/100);circ.style.strokeDashoffset=offset;}
+  set('score-num',score);
+}
+
+/* ══════════════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════════════ */
+function set(id,val){var el=document.getElementById(id);if(el)el.textContent=val;}
+function exportData(){
+  var d=JSON.stringify({shipments:state.shipments,evidenceFiles:state.evidenceFiles.map(function(f){return {id:f.id,name:f.name,cat:f.cat,status:f.status};})},null,2);
+  var a=document.createElement('a');a.href='data:application/json,'+encodeURIComponent(d);a.download='cbambridge-export-'+new Date().toISOString().split('T')[0]+'.json';a.click();
+}
+function clearAllData(){
+  if(confirm('Clear all shipments and evidence data? This cannot be undone.')){{state.shipments=[];state.evidenceFiles=[];state.liabilityRun=false;state.reportViewed=false;renderShipments();renderEvidenceFiles();renderOverview();nav('overview');}}
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');}
+
+/* ══════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════ */
+// set today's date as default
+document.getElementById('sf-date').value = new Date().toISOString().split('T')[0];
+// init scenario buttons
+setScenario(50, document.querySelector('.scenario-btn'));
+renderOverview();
+</script>
+</body>
+</html>
