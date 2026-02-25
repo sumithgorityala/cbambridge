@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content="CBAMbridge — CBAM compliance infrastructure for non-EU manufacturers. Threshold intelligence, evidence management, and financial modelling for the EU Carbon Border Adjustment Mechanism."/>
+<title>CBAMbridge — CBAM Compliance Infrastructure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Instrument+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════════════════
+   RESET & TOKENS
+═══════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;font-size:16px;}
+:root{
+  --ink0:#080c14;--ink1:#0d1420;--ink2:#111c2a;
+  --b0:#192334;--b1:#1f2d3f;--b2:#263547;
+  --t0:#eef2f7;--t1:#8ca0b8;--t2:#4a5e72;
+  --em:#00c896;--emd:#003d2e;--emg:rgba(0,200,150,.08);
+  --em2:rgba(0,200,150,.5);
+  --warn:#f59e0b;--danger:#ef4444;
+  --glow:0 0 40px rgba(0,200,150,.15);
+}
+body{
+  font-family:'Instrument Sans','Segoe UI',sans-serif;
+  font-weight:300;font-size:16px;line-height:1.65;
+  background:var(--ink0);color:var(--t0);
+  overflow-x:hidden;cursor:none;
+}
+a{text-decoration:none;color:inherit;}
+img{display:block;}
+
+/* ═══════════════════════════════════════════════════════
+   CURSOR
+═══════════════════════════════════════════════════════ */
+#cur{position:fixed;width:8px;height:8px;background:var(--em);border-radius:50%;
+  pointer-events:none;z-index:9999;transform:translate(-50%,-50%);
+  transition:width .15s,height .15s;}
+#cur-r{position:fixed;width:28px;height:28px;border:1px solid var(--em2);
+  border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);
+  transition:width .15s,height .15s;}
+
+/* ═══════════════════════════════════════════════════════
+   TYPE
+═══════════════════════════════════════════════════════ */
+.display{font-family:'Bricolage Grotesque',sans-serif;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.lbl{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--em);}
+.tag-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--t2);
+  border:1px solid var(--b1);padding:4px 12px;
+  background:rgba(13,20,32,.8);
+}
+.tag-em{color:var(--em);border-color:var(--emd);background:var(--emg);}
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════ */
+.ct{max-width:1280px;margin:0 auto;padding:0 48px;}
+@media(max-width:768px){.ct{padding:0 24px;}}
+.sec{padding:120px 0;}
+.sec-sm{padding:80px 0;}
+.rule{border:none;border-top:1px solid var(--b0);}
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════════════ */
+.btn-em{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--em);color:var(--ink0);
+  font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;
+  padding:14px 28px;border:none;cursor:none;
+  transition:background .2s,transform .15s,box-shadow .2s;
+}
+.btn-em:hover{background:#00e5aa;transform:translateY(-1px);box-shadow:var(--glow);}
+.btn-ghost{
+  display:inline-flex;align-items:center;gap:8px;
+  background:transparent;color:var(--t1);
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  letter-spacing:.14em;text-transform:uppercase;
+  padding:13px 28px;border:1px solid var(--b1);cursor:none;
+  transition:border-color .2s,color .2s,background .2s;
+}
+.btn-ghost:hover{border-color:var(--em);color:var(--em);background:var(--emg);}
+
+/* ═══════════════════════════════════════════════════════
+   NAV
+═══════════════════════════════════════════════════════ */
+#nav{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  transition:background .3s,border-color .3s;
+  border-bottom:1px solid transparent;
+}
+#nav.scrolled{
+  background:rgba(8,12,20,.92);
+  border-color:var(--b0);
+  backdrop-filter:blur(20px);
+}
+#nav .ni{
+  max-width:1280px;margin:0 auto;padding:0 48px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:64px;
+}
+.wordmark{
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:700;font-size:18px;letter-spacing:-.02em;
+  color:var(--t0);
+  display:flex;align-items:center;gap:2px;
+}
+.wordmark span{color:var(--em);}
+.nav-links{display:flex;align-items:center;gap:32px;}
+.nav-a{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--t2);transition:color .2s;
+}
+.nav-a:hover{color:var(--t0);}
+.nav-cta{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  letter-spacing:.14em;text-transform:uppercase;
+  background:var(--em);color:var(--ink0);
+  padding:10px 20px;cursor:none;
+  transition:background .2s;
+}
+.nav-cta:hover{background:#00e5aa;}
+@media(max-width:960px){.nav-links{display:none;}}
+@media(max-width:768px){#nav .ni{padding:0 24px;}}
+
+/* ═══════════════════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════════════════ */
+#hero{
+  position:relative;min-height:100vh;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:center;
+  padding-top:64px;
+}
+.hero-grid{
+  position:absolute;inset:0;z-index:0;
+  background-image:
+    linear-gradient(var(--b0) 1px,transparent 1px),
+    linear-gradient(90deg,var(--b0) 1px,transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 40%,black 0%,transparent 100%);
+  opacity:.4;
+}
+.hero-glow{
+  position:absolute;top:20%;left:50%;transform:translate(-50%,-50%);
+  width:600px;height:400px;
+  background:radial-gradient(ellipse,rgba(0,200,150,.12) 0%,transparent 70%);
+  z-index:0;pointer-events:none;
+}
+.hero-c{position:relative;z-index:2;max-width:1280px;margin:0 auto;padding:80px 48px;}
+@media(max-width:768px){.hero-c{padding:60px 24px;}}
+
+/* Ticker */
+.hero-ticker{
+  display:inline-flex;align-items:center;gap:10px;
+  border:1px solid var(--emd);background:var(--emg);
+  padding:6px 16px;margin-bottom:36px;
+}
+.ticker-dot{width:6px;height:6px;border-radius:50%;background:var(--em);animation:tp 2s ease-in-out infinite;}
+@keyframes tp{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.3;transform:scale(.6);}}
+
+.hero-hl{
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:800;
+  font-size:clamp(40px,6.5vw,88px);
+  line-height:1.0;
+  letter-spacing:-.025em;
+  color:var(--t0);
+  margin-bottom:28px;
+}
+.hero-hl em{
+  font-style:normal;color:var(--em);
+  text-shadow:0 0 40px rgba(0,200,150,.4);
+}
+.hero-sub{
+  font-size:18px;font-weight:300;color:var(--t1);
+  max-width:560px;line-height:1.75;margin-bottom:44px;
+}
+
+/* Live data strip */
+.hero-data-strip{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--b0);
+  border:1px solid var(--b0);margin-top:72px;
+}
+@media(max-width:768px){.hero-data-strip{grid-template-columns:repeat(2,1fr);}}
+.hds-cell{
+  background:rgba(13,20,32,.9);padding:20px 24px;
+  position:relative;overflow:hidden;
+}
+.hds-cell::before{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--em),transparent);
+  opacity:0;transition:opacity .4s;
+}
+.hds-cell:hover::before{opacity:1;}
+.hds-num{
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:700;font-size:clamp(22px,3vw,32px);
+  color:var(--t0);line-height:1;margin-bottom:6px;
+}
+.hds-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t2);letter-spacing:.12em;text-transform:uppercase;}
+.hds-em{color:var(--em);}
+
+/* ═══════════════════════════════════════════════════════
+   FADE-IN
+═══════════════════════════════════════════════════════ */
+.fi{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s ease;}
+.fi.on{opacity:1;transform:none;}
+.fi-d1{transition-delay:.1s;}
+.fi-d2{transition-delay:.2s;}
+.fi-d3{transition-delay:.3s;}
+.fi-d4{transition-delay:.4s;}
+.fi-d5{transition-delay:.5s;}
+
+/* ═══════════════════════════════════════════════════════
+   SOCIAL PROOF LOGOS
+═══════════════════════════════════════════════════════ */
+.logos-strip{
+  border-top:1px solid var(--b0);border-bottom:1px solid var(--b0);
+  padding:32px 0;background:var(--ink1);overflow:hidden;
+}
+.logos-inner{display:flex;gap:64px;align-items:center;width:max-content;
+  animation:logoScroll 30s linear infinite;}
+@keyframes logoScroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+.logo-item{
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:600;font-size:14px;letter-spacing:.04em;
+  color:var(--t2);white-space:nowrap;
+  display:flex;align-items:center;gap:8px;
+}
+.logo-item::before{
+  content:'';width:4px;height:4px;border-radius:50%;
+  background:var(--b2);flex-shrink:0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PROBLEM / SOLUTION
+═══════════════════════════════════════════════════════ */
+.ps-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;}
+@media(max-width:768px){.ps-grid{grid-template-columns:1fr;}}
+.ps-cell{padding:48px;background:var(--ink1);}
+.ps-cell.danger{border-top:2px solid var(--danger);}
+.ps-cell.good{border-top:2px solid var(--em);}
+
+/* ═══════════════════════════════════════════════════════
+   FEATURE CARDS
+═══════════════════════════════════════════════════════ */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;}
+@media(max-width:960px){.feat-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.feat-grid{grid-template-columns:1fr;}}
+.feat{
+  background:var(--ink2);border:1px solid var(--b0);
+  padding:40px 36px;
+  transition:border-color .3s,background .3s;
+  position:relative;overflow:hidden;
+}
+.feat::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--em),transparent);
+  transform:scaleX(0);transition:transform .4s;
+}
+.feat:hover{border-color:var(--b2);background:var(--ink1);}
+.feat:hover::before{transform:scaleX(1);}
+.feat-icon{
+  width:44px;height:44px;border:1px solid var(--b1);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:24px;font-size:18px;
+  background:var(--ink0);
+}
+.feat-title{
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:600;font-size:18px;margin-bottom:12px;
+  color:var(--t0);
+}
+.feat-desc{font-size:14px;color:var(--t1);line-height:1.75;}
+
+/* ═══════════════════════════════════════════════════════
+   DASHBOARD MOCKUP
+═══════════════════════════════════════════════════════ */
+.dash-frame{
+  border:1px solid var(--b1);
+  background:var(--ink1);
+  overflow:hidden;
+  position:relative;
+  box-shadow:0 40px 80px rgba(0,0,0,.5),var(--glow);
+}
+.dash-bar{
+  height:40px;background:var(--ink0);border-bottom:1px solid var(--b0);
+  display:flex;align-items:center;gap:8px;padding:0 16px;
+}
+.dash-dot{width:10px;height:10px;border-radius:50%;}
+
+/* ═══════════════════════════════════════════════════════
+   HOW IT WORKS
+═══════════════════════════════════════════════════════ */
+.step-line{
+  display:grid;grid-template-columns:auto 1fr;gap:24px;
+  padding:28px 0;border-bottom:1px solid var(--b0);
+  transition:background .2s;
+}
+.step-line:last-child{border-bottom:none;}
+.step-line:hover{background:var(--emg);}
+.step-num{
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:800;font-size:clamp(40px,5vw,64px);
+  color:var(--emd);line-height:1;width:80px;text-align:right;
+  flex-shrink:0;
+}
+.step-line:hover .step-num{color:var(--em);}
+
+/* ═══════════════════════════════════════════════════════
+   COMPLIANCE SCORE WIDGET
+═══════════════════════════════════════════════════════ */
+.score-ring{
+  position:relative;width:160px;height:160px;flex-shrink:0;
+}
+.score-ring svg{transform:rotate(-90deg);}
+.score-ring .num{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PRICING
+═══════════════════════════════════════════════════════ */
+.price-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;}
+@media(max-width:960px){.price-grid{grid-template-columns:1fr;max-width:480px;margin:0 auto;}}
+.plan{
+  background:var(--ink2);border:1px solid var(--b0);padding:40px 36px;
+  position:relative;transition:border-color .3s;
+}
+.plan.featured{
+  border-color:var(--em);background:var(--ink1);
+  box-shadow:0 0 0 1px var(--em);
+}
+.plan-badge{
+  position:absolute;top:-1px;left:50%;transform:translateX(-50%);
+  background:var(--em);color:var(--ink0);
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;
+  padding:4px 16px;white-space:nowrap;
+}
+.plan-price{
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:700;font-size:clamp(32px,4vw,48px);
+  color:var(--t0);line-height:1;margin-bottom:4px;
+}
+.plan-period{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2);}
+.plan-desc{font-size:13px;color:var(--t1);margin:16px 0 28px;line-height:1.65;}
+.plan-feature{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:9px 0;border-bottom:1px solid var(--b0);
+  font-size:13px;color:var(--t1);
+}
+.plan-feature:last-child{border-bottom:none;}
+.pf-check{color:var(--em);flex-shrink:0;font-size:12px;margin-top:2px;}
+.pf-x{color:var(--t2);flex-shrink:0;font-size:12px;margin-top:2px;}
+
+/* ═══════════════════════════════════════════════════════
+   STAT BAND
+═══════════════════════════════════════════════════════ */
+.stat-band{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--b0);
+  border-top:1px solid var(--b0);border-bottom:1px solid var(--b0);
+}
+@media(max-width:768px){.stat-band{grid-template-columns:repeat(2,1fr);}}
+.sb-cell{
+  background:var(--ink1);padding:40px 32px;
+  text-align:center;
+}
+.sb-num{
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:700;font-size:clamp(28px,3.5vw,44px);
+  color:var(--em);margin-bottom:8px;line-height:1;
+}
+.sb-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t2);letter-spacing:.12em;text-transform:uppercase;line-height:1.5;}
+
+/* ═══════════════════════════════════════════════════════
+   TRUST
+═══════════════════════════════════════════════════════ */
+.trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;}
+@media(max-width:768px){.trust-grid{grid-template-columns:1fr;}}
+.trust-cell{
+  background:var(--ink2);border:1px solid var(--b0);padding:32px;
+  display:flex;align-items:flex-start;gap:18px;
+}
+.trust-icon{
+  width:40px;height:40px;border:1px solid var(--emd);
+  background:var(--emg);display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;font-size:16px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TESTIMONIALS
+═══════════════════════════════════════════════════════ */
+.testi-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;}
+@media(max-width:768px){.testi-grid{grid-template-columns:1fr;}}
+.testi{background:var(--ink2);border:1px solid var(--b0);padding:40px;}
+.testi-quote{
+  font-size:16px;color:var(--t0);line-height:1.75;
+  font-style:italic;margin-bottom:28px;
+  position:relative;padding-left:20px;
+}
+.testi-quote::before{
+  content:'"';position:absolute;left:0;top:-8px;
+  font-family:'Bricolage Grotesque',sans-serif;font-size:40px;
+  color:var(--em);line-height:1;
+}
+.testi-auth{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2);letter-spacing:.1em;}
+.testi-co{color:var(--em);font-size:11px;font-family:'JetBrains Mono',monospace;}
+
+/* ═══════════════════════════════════════════════════════
+   FAQ
+═══════════════════════════════════════════════════════ */
+.faq{border-bottom:1px solid var(--b0);}
+.faq summary{
+  padding:24px 0;cursor:pointer;
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-weight:500;font-size:16px;color:var(--t0);
+  display:flex;justify-content:space-between;align-items:center;
+  list-style:none;
+  transition:color .2s;
+}
+.faq summary:hover{color:var(--em);}
+.faq summary::after{
+  content:'+';font-family:'JetBrains Mono',monospace;
+  font-size:18px;color:var(--t2);flex-shrink:0;
+  transition:transform .3s,color .2s;
+}
+.faq[open] summary::after{transform:rotate(45deg);color:var(--em);}
+.faq-body{
+  padding-bottom:24px;font-size:14px;color:var(--t1);
+  line-height:1.8;max-width:700px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CTA SECTION
+═══════════════════════════════════════════════════════ */
+.cta-sec{
+  background:var(--ink1);
+  border-top:1px solid var(--b0);
+  border-bottom:1px solid var(--b0);
+  position:relative;overflow:hidden;
+}
+.cta-glow{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:800px;height:400px;
+  background:radial-gradient(ellipse,rgba(0,200,150,.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════ */
+footer{background:var(--ink0);border-top:1px solid var(--b0);padding:64px 0 40px;}
+.ft-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;}
+@media(max-width:960px){.ft-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.ft-grid{grid-template-columns:1fr;}}
+.ft-heading{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--t2);margin-bottom:16px;}
+.ft-link{font-size:13px;color:var(--t2);transition:color .2s;display:block;padding:4px 0;}
+.ft-link:hover{color:var(--t0);}
+.ft-bottom{margin-top:56px;padding-top:24px;border-top:1px solid var(--b0);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+
+/* ═══════════════════════════════════════════════════════
+   MISC
+═══════════════════════════════════════════════════════ */
+.grain{
+  position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:160px 160px;
+}
+.inline-code{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  background:var(--ink0);border:1px solid var(--b1);
+  padding:2px 7px;color:var(--em);
+}
+@keyframes fadeUpIn{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:none;}}
+.anim1{animation:fadeUpIn .8s .2s both;}
+.anim2{animation:fadeUpIn .8s .4s both;}
+.anim3{animation:fadeUpIn .8s .6s both;}
+.anim4{animation:fadeUpIn .8s .8s both;}
+.anim5{animation:fadeUpIn .8s 1s both;}
+
+/* Dashboard preview bars */
+.db-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--b0);}
+.db-row:last-child{border-bottom:none;}
+.db-bar{flex:1;height:4px;background:var(--b1);overflow:hidden;}
+.db-fill{height:100%;background:var(--em);transition:width 1.5s cubic-bezier(.16,1,.3,1);}
+.db-fill.go{width:var(--w)!important;}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="cur-r"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     NAV
+══════════════════════════════════════════════════════ -->
+<nav id="nav">
+  <div class="ni">
+    <a href="/" class="wordmark">CBAM<span>bridge</span></a>
+    <div class="nav-links">
+      <a href="#features" class="nav-a">Features</a>
+      <a href="#how-it-works" class="nav-a">How It Works</a>
+      <a href="#pricing" class="nav-a">Pricing</a>
+      <a href="#compliance" class="nav-a">Compliance</a>
+      <a href="app.html" class="nav-cta">Launch App →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="grain"></div>
+
+  <div class="hero-c">
+    <div class="hero-ticker anim1">
+      <span class="ticker-dot"></span>
+      <span class="mono" style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--em);">CBAM Omnibus 2026 · Compliance Now Live</span>
+    </div>
+
+    <h1 class="hero-hl anim2">
+      Your factory.<br>
+      The EU market.<br>
+      <em>Zero compliance risk.</em>
+    </h1>
+
+    <p class="hero-sub anim3">
+      CBAMbridge is the compliance infrastructure layer for non-EU manufacturers navigating the Carbon Border Adjustment Mechanism — from 50-tonne threshold intelligence to certificate management.
+    </p>
+
+    <div class="anim4" style="display:flex;gap:14px;flex-wrap:wrap;">
+      <a href="app.html" class="btn-em">Start Compliance Audit →</a>
+      <a href="#how-it-works" class="btn-ghost">See How It Works</a>
+    </div>
+
+    <!-- Live data strip -->
+    <div class="hero-data-strip anim5">
+      <div class="hds-cell">
+        <div class="hds-num hds-em" id="hds1">€0</div>
+        <div class="hds-lbl">Avg Liability Identified / Client</div>
+      </div>
+      <div class="hds-cell">
+        <div class="hds-num" id="hds2">0</div>
+        <div class="hds-lbl">Evidence Files Processed</div>
+      </div>
+      <div class="hds-cell">
+        <div class="hds-num hds-em">T−<span id="hds3">0</span></div>
+        <div class="hds-lbl">Days to 31 Mar 2026 Deadline</div>
+      </div>
+      <div class="hds-cell">
+        <div class="hds-num">6</div>
+        <div class="hds-lbl">CBAM Sectors Covered</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SOCIAL PROOF LOGOS
+══════════════════════════════════════════════════════ -->
+<div class="logos-strip">
+  <div style="max-width:1280px;margin:0 auto;padding:0 48px 0;">
+    <p class="mono" style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);margin-bottom:20px;">Trusted by manufacturers across</p>
+  </div>
+  <div class="logos-inner">
+    <span class="logo-item">SIRCILLA STEEL COMPLEX</span>
+    <span class="logo-item">BHARAT ALUMINIUM EXPORTS</span>
+    <span class="logo-item">ISTANBUL REBAR GROUP</span>
+    <span class="logo-item">BANGALORE FERTILIZER CORP</span>
+    <span class="logo-item">PUNE CEMENT INDUSTRIES</span>
+    <span class="logo-item">GUJARAT HYDROGEN TECH</span>
+    <span class="logo-item">ANKARA STEEL MILLS</span>
+    <span class="logo-item">CHENNAI ALLOYS LTD</span>
+    <!-- Duplicate for seamless loop -->
+    <span class="logo-item">SIRCILLA STEEL COMPLEX</span>
+    <span class="logo-item">BHARAT ALUMINIUM EXPORTS</span>
+    <span class="logo-item">ISTANBUL REBAR GROUP</span>
+    <span class="logo-item">BANGALORE FERTILIZER CORP</span>
+    <span class="logo-item">PUNE CEMENT INDUSTRIES</span>
+    <span class="logo-item">GUJARAT HYDROGEN TECH</span>
+    <span class="logo-item">ANKARA STEEL MILLS</span>
+    <span class="logo-item">CHENNAI ALLOYS LTD</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PROBLEM / SOLUTION
+══════════════════════════════════════════════════════ -->
+<section class="sec-sm" id="problem">
+  <div class="ct">
+    <div style="text-align:center;margin-bottom:56px;" class="fi">
+      <p class="lbl" style="margin-bottom:12px;">The Gap</p>
+      <h2 class="display" style="font-size:clamp(28px,4vw,48px);font-weight:700;letter-spacing:-.02em;margin-bottom:0;">What CBAM threatens. What CBAMbridge solves.</h2>
+    </div>
+    <div class="ps-grid fi">
+      <div class="ps-cell danger">
+        <p class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--danger);margin-bottom:20px;">Without CBAMbridge</p>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--danger);font-size:12px;margin-top:2px;flex-shrink:0;">✕</span>
+            <p style="font-size:14px;color:var(--t1);line-height:1.7;">Import suspension if you miss the <strong style="color:var(--t0);">31 March 2026</strong> Authorized Declarant registration deadline</p>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--danger);font-size:12px;margin-top:2px;flex-shrink:0;">✕</span>
+            <p style="font-size:14px;color:var(--t1);line-height:1.7;"><strong style="color:var(--t0);">€50/tCO₂e</strong> non-compliance penalty on every tonne above the threshold with no certificate coverage</p>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--danger);font-size:12px;margin-top:2px;flex-shrink:0;">✕</span>
+            <p style="font-size:14px;color:var(--t1);line-height:1.7;">EU default emission factors applied — often <strong style="color:var(--t0);">15–40% higher</strong> than verified actual production data</p>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--danger);font-size:12px;margin-top:2px;flex-shrink:0;">✕</span>
+            <p style="font-size:14px;color:var(--t1);line-height:1.7;">No audit trail — evidence bundles scattered across email, spreadsheets, and paper files</p>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--danger);font-size:12px;margin-top:2px;flex-shrink:0;">✕</span>
+            <p style="font-size:14px;color:var(--t1);line-height:1.7;">Liability blindspot — no real-time view of cumulative CBAM certificate obligations</p>
+          </div>
+        </div>
+      </div>
+      <div class="ps-cell good">
+        <p class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--em);margin-bottom:20px;">With CBAMbridge</p>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--em);font-size:12px;margin-top:2px;flex-shrink:0;">✓</span>
+            <p style="font-size:14px;color:var(--t1);line-height:1.7;">Live countdown with automated alerts as registration deadline approaches — never miss a regulatory date</p>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--em);font-size:12px;margin-top:2px;flex-shrink:0;">✓</span>
+            <p style="font-size:14px;color:var(--t1);line-height:1.7;">Real-time penalty exposure calculation so you know exact financial risk before each shipment leaves port</p>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--em);font-size:12px;margin-top:2px;flex-shrink:0;">✓</span>
+            <p style="font-size:14px;color:var(--t1);line-height:1.7;">Evidence Vault with drag-and-drop upload, ISO 14064-3 categorization, and verification status tracking</p>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--em);font-size:12px;margin-top:2px;flex-shrink:0;">✓</span>
+            <p style="font-size:14px;color:var(--t1);line-height:1.7;">Actual vs. EU default emission factor gap analysis — reduce your certificate burden with verified data</p>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="color:var(--em);font-size:12px;margin-top:2px;flex-shrink:0;">✓</span>
+            <p style="font-size:14px;color:var(--t1);line-height:1.7;">Full EU ETS price scenario modelling — €50 bear to €110 shock scenarios for CFO-ready financial planning</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     STAT BAND
+══════════════════════════════════════════════════════ -->
+<div class="stat-band">
+  <div class="sb-cell fi">
+    <div class="sb-num">€65</div>
+    <div class="sb-lbl">ETS Reference Price<br>per tCO₂e · 2026</div>
+  </div>
+  <div class="sb-cell fi fi-d1">
+    <div class="sb-num">50t</div>
+    <div class="sb-lbl">Annual Import Threshold<br>for Registration</div>
+  </div>
+  <div class="sb-cell fi fi-d2">
+    <div class="sb-num">6</div>
+    <div class="sb-lbl">CBAM Sectors<br>Steel · Al · Cement · More</div>
+  </div>
+  <div class="sb-cell fi fi-d3">
+    <div class="sb-num">€50</div>
+    <div class="sb-lbl">Max Penalty per tCO₂e<br>Non-Compliance Fine</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FEATURES
+══════════════════════════════════════════════════════ -->
+<section class="sec" id="features">
+  <div class="ct">
+    <div style="max-width:640px;margin-bottom:64px;" class="fi">
+      <p class="lbl" style="margin-bottom:14px;">Platform Capabilities</p>
+      <h2 class="display" style="font-size:clamp(28px,4vw,48px);font-weight:700;letter-spacing:-.02em;margin-bottom:18px;">Everything a non-EU manufacturer needs. Nothing it doesn't.</h2>
+      <p style="font-size:16px;color:var(--t1);line-height:1.75;">Built specifically for factory managers, export compliance officers, and CFOs at India, Turkey, and MENA-origin manufacturing operations.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat fi">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-title">Threshold Intelligence</div>
+        <p class="feat-desc">Real-time cumulative mass tracker against the 50-tonne CBAM registration threshold. Per-sector breakdown with automated Critical Regulatory Alerts when exceeded.</p>
+      </div>
+      <div class="feat fi fi-d1">
+        <div class="feat-icon">📁</div>
+        <div class="feat-title">Evidence Vault</div>
+        <p class="feat-desc">ISO 14064-3 compliant drag-and-drop document management. Categorise energy bills, production logs, fuel invoices, and lab certificates with verification status tracking.</p>
+      </div>
+      <div class="feat fi fi-d2">
+        <div class="feat-icon">📊</div>
+        <div class="feat-title">Liability Modeller</div>
+        <p class="feat-desc">Four EU ETS price scenarios from €50 bear to €110 shock. Emission gap analysis between actual factory data and EU default factors. CFO-ready financial exposure reports.</p>
+      </div>
+      <div class="feat fi fi-d3">
+        <div class="feat-icon">🧮</div>
+        <div class="feat-title">Certificate Calculator</div>
+        <p class="feat-desc">Automatic CBAM certificate quantity and value estimation. Full penalty exposure modelling at €50/tCO₂e. Per-shipment and aggregated annual surrender obligation.</p>
+      </div>
+      <div class="feat fi fi-d4">
+        <div class="feat-icon">🗂️</div>
+        <div class="feat-title">Shipment Register</div>
+        <p class="feat-desc">Multi-sector import log with HS code classification, country of origin tracking, and actual vs. default emission factor selection per shipment.</p>
+      </div>
+      <div class="feat fi fi-d5">
+        <div class="feat-icon">📋</div>
+        <div class="feat-title">Compliance Report</div>
+        <p class="feat-desc">Print-ready summary report with registration status, evidence completeness score, certificate obligations, and prioritised action checklist — shareable with EU importers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     DASHBOARD PREVIEW
+══════════════════════════════════════════════════════ -->
+<section class="sec-sm" style="background:var(--ink1);border-top:1px solid var(--b0);border-bottom:1px solid var(--b0);">
+  <div class="ct">
+    <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:72px;align-items:center;">
+      <div class="fi">
+        <p class="lbl" style="margin-bottom:14px;">Live Platform</p>
+        <h2 class="display" style="font-size:clamp(24px,3.5vw,42px);font-weight:700;letter-spacing:-.02em;margin-bottom:20px;">A mission-critical tool. Not a spreadsheet.</h2>
+        <p style="font-size:14px;color:var(--t1);line-height:1.8;margin-bottom:28px;">Every input updates the compliance position in real time. Log a shipment — threshold gauge adjusts. Upload evidence — completeness score recalculates. Change ETS price — liability recalculates instantly.</p>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:32px;">
+          <div id="dbr1" class="db-row">
+            <span class="mono" style="font-size:10px;color:var(--t2);width:160px;flex-shrink:0;">Import Mass Threshold</span>
+            <div class="db-bar"><div class="db-fill" style="width:0;--w:78%;"></div></div>
+            <span class="mono" style="font-size:10px;color:var(--em);width:40px;text-align:right;">78%</span>
+          </div>
+          <div id="dbr2" class="db-row">
+            <span class="mono" style="font-size:10px;color:var(--t2);width:160px;flex-shrink:0;">Evidence Completeness</span>
+            <div class="db-bar"><div class="db-fill" style="width:0;--w:60%;background:var(--warn);"></div></div>
+            <span class="mono" style="font-size:10px;color:var(--warn);width:40px;text-align:right;">60%</span>
+          </div>
+          <div id="dbr3" class="db-row">
+            <span class="mono" style="font-size:10px;color:var(--t2);width:160px;flex-shrink:0;">Emission Gap Reduction</span>
+            <div class="db-bar"><div class="db-fill" style="width:0;--w:45%;background:#6366f1;"></div></div>
+            <span class="mono" style="font-size:10px;color:#6366f1;width:40px;text-align:right;">45%</span>
+          </div>
+          <div id="dbr4" class="db-row">
+            <span class="mono" style="font-size:10px;color:var(--t2);width:160px;flex-shrink:0;">Report Readiness</span>
+            <div class="db-bar"><div class="db-fill" style="width:0;--w:35%;"></div></div>
+            <span class="mono" style="font-size:10px;color:var(--em);width:40px;text-align:right;">35%</span>
+          </div>
+        </div>
+        <a href="app.html" class="btn-em">Open Compliance Dashboard →</a>
+      </div>
+
+      <!-- Dashboard mockup -->
+      <div class="fi fi-d2">
+        <div class="dash-frame">
+          <div class="dash-bar">
+            <div class="dash-dot" style="background:#ef4444;"></div>
+            <div class="dash-dot" style="background:#f59e0b;"></div>
+            <div class="dash-dot" style="background:#22c55e;"></div>
+            <span class="mono" style="font-size:10px;color:var(--t2);margin-left:8px;letter-spacing:.08em;">cbambridge.com/app — Compliance Dashboard</span>
+          </div>
+          <!-- Mock nav -->
+          <div style="display:flex;height:100%;background:var(--ink0);">
+            <div style="width:180px;background:var(--ink1);border-right:1px solid var(--b0);padding:16px;flex-shrink:0;">
+              <p class="mono" style="font-size:9px;color:var(--t2);letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px;">Workflow</p>
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <div style="padding:8px 10px;background:var(--emg);border-left:2px solid var(--em);">
+                  <span class="mono" style="font-size:10px;color:var(--em);">01 Shipments</span></div>
+                <div style="padding:8px 10px;"><span class="mono" style="font-size:10px;color:var(--t2);">02 Threshold</span></div>
+                <div style="padding:8px 10px;"><span class="mono" style="font-size:10px;color:var(--t2);">03 Evidence</span></div>
+                <div style="padding:8px 10px;"><span class="mono" style="font-size:10px;color:var(--t2);">04 Liability</span></div>
+                <div style="padding:8px 10px;"><span class="mono" style="font-size:10px;color:var(--t2);">05 Report</span></div>
+              </div>
+              <div style="margin-top:20px;border:1px solid var(--emd);background:var(--emg);padding:12px;">
+                <p class="mono" style="font-size:9px;color:var(--t2);">Exposure</p>
+                <p class="display" style="font-size:20px;font-weight:700;color:var(--em);">€48.2k</p>
+              </div>
+            </div>
+            <div style="flex:1;padding:16px;">
+              <!-- Alert strip -->
+              <div style="border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.06);padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:8px;color:#ef4444;animation:tp 2s infinite;">●</span>
+                <span class="mono" style="font-size:9px;color:#ef4444;letter-spacing:.1em;text-transform:uppercase;">⚠ Critical — 50t threshold exceeded · Register by 31 Mar 2026</span>
+              </div>
+              <!-- Gauge -->
+              <div style="background:var(--ink2);border:1px solid var(--b0);padding:14px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+                  <span class="mono" style="font-size:9px;color:var(--t2);">Annual Import Mass</span>
+                  <span class="display" style="font-size:20px;font-weight:700;color:var(--t0);">62.4 <span style="font-size:12px;color:var(--t2);">/ 50t</span></span>
+                </div>
+                <div style="height:6px;background:var(--b1);">
+                  <div style="height:100%;width:100%;background:#ef4444;"></div>
+                </div>
+              </div>
+              <!-- Mini shipment rows -->
+              <div style="background:var(--ink2);border:1px solid var(--b0);">
+                <div style="padding:8px 12px;border-bottom:1px solid var(--b0);">
+                  <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;">
+                    <span style="font-size:11px;color:var(--t0);">HRC Steel Coils · India</span>
+                    <span class="mono" style="font-size:9px;color:var(--t2);">40.0t</span>
+                    <span class="mono" style="font-size:9px;color:var(--em);">€52.0k</span>
+                  </div>
+                </div>
+                <div style="padding:8px 12px;border-bottom:1px solid var(--b0);">
+                  <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;">
+                    <span style="font-size:11px;color:var(--t0);">Aluminium Ingots · India</span>
+                    <span class="mono" style="font-size:9px;color:var(--t2);">12.4t</span>
+                    <span class="mono" style="font-size:9px;color:var(--em);">€6.9k</span>
+                  </div>
+                </div>
+                <div style="padding:8px 12px;">
+                  <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;">
+                    <span style="font-size:11px;color:var(--t0);">Cement Clinker · India</span>
+                    <span class="mono" style="font-size:9px;color:var(--t2);">10.0t</span>
+                    <span class="mono" style="font-size:9px;color:var(--em);">€0.6k</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     HOW IT WORKS
+══════════════════════════════════════════════════════ -->
+<section class="sec" id="how-it-works">
+  <div class="ct">
+    <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:80px;align-items:start;">
+      <div class="fi" style="position:sticky;top:100px;">
+        <p class="lbl" style="margin-bottom:14px;">Workflow</p>
+        <h2 class="display" style="font-size:clamp(26px,3.5vw,44px);font-weight:700;letter-spacing:-.02em;margin-bottom:20px;">From first shipment to fully declared. In five steps.</h2>
+        <p style="font-size:14px;color:var(--t1);line-height:1.8;margin-bottom:32px;">Designed for factory operations teams with no prior CBAM experience. No compliance consultant required for initial assessment.</p>
+        <a href="app.html" class="btn-em">Start Now →</a>
+      </div>
+      <div class="fi fi-d1">
+        <div class="step-line">
+          <div class="step-num">01</div>
+          <div style="padding:4px 0;">
+            <p class="display" style="font-weight:600;font-size:18px;margin-bottom:8px;color:var(--t0);">Log your shipments</p>
+            <p style="font-size:14px;color:var(--t1);line-height:1.75;">Enter each CBAM-covered import with sector, mass, origin country, and HS code. The threshold gauge updates with every entry.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;">
+              <span class="tag-pill">Steel</span><span class="tag-pill">Aluminium</span><span class="tag-pill">Cement</span>
+              <span class="tag-pill">Fertilizers</span><span class="tag-pill">Electricity</span><span class="tag-pill">Hydrogen</span>
+            </div>
+          </div>
+        </div>
+        <div class="step-line">
+          <div class="step-num">02</div>
+          <div style="padding:4px 0;">
+            <p class="display" style="font-weight:600;font-size:18px;margin-bottom:8px;color:var(--t0);">Get threshold alert</p>
+            <p style="font-size:14px;color:var(--t1);line-height:1.75;">If your cumulative annual mass exceeds 50 tonnes, a Critical Regulatory Alert fires with the exact March 31 2026 registration deadline and mandatory steps.</p>
+          </div>
+        </div>
+        <div class="step-line">
+          <div class="step-num">03</div>
+          <div style="padding:4px 0;">
+            <p class="display" style="font-weight:600;font-size:18px;margin-bottom:8px;color:var(--t0);">Upload evidence bundles</p>
+            <p style="font-size:14px;color:var(--t1);line-height:1.75;">Drag and drop energy bills, production logs, fuel invoices, and lab certificates into the Evidence Vault. Track verification status for each document against EU Article 35 requirements.</p>
+          </div>
+        </div>
+        <div class="step-line">
+          <div class="step-num">04</div>
+          <div style="padding:4px 0;">
+            <p class="display" style="font-weight:600;font-size:18px;margin-bottom:8px;color:var(--t0);">Model your liability</p>
+            <p style="font-size:14px;color:var(--t1);line-height:1.75;">Run four EU ETS price scenarios. See the gap between your actual factory emissions and EU default factors. Calculate exact CBAM certificate requirements and penalty exposure.</p>
+          </div>
+        </div>
+        <div class="step-line">
+          <div class="step-num">05</div>
+          <div style="padding:4px 0;">
+            <p class="display" style="font-weight:600;font-size:18px;margin-bottom:8px;color:var(--t0);">Export compliance report</p>
+            <p style="font-size:14px;color:var(--t1);line-height:1.75;">Print or PDF a summary of your registration status, certificate obligations, action checklist, and financial exposure — ready to share with your EU importer or compliance advisor.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     TRUST SIGNALS
+══════════════════════════════════════════════════════ -->
+<section class="sec-sm" id="compliance" style="background:var(--ink1);border-top:1px solid var(--b0);">
+  <div class="ct">
+    <div style="margin-bottom:48px;" class="fi">
+      <p class="lbl" style="margin-bottom:12px;">Regulatory Foundation</p>
+      <h2 class="display" style="font-size:clamp(24px,3.5vw,40px);font-weight:700;letter-spacing:-.02em;">Built on the actual regulation. Not a summary.</h2>
+    </div>
+    <div class="trust-grid fi">
+      <div class="trust-cell">
+        <div class="trust-icon">⚖️</div>
+        <div>
+          <p class="mono" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--em);margin-bottom:8px;">EU Reg. 2023/956</p>
+          <p style="font-size:13px;color:var(--t1);line-height:1.7;">Core CBAM Regulation. All threshold logic, sector coverage, and penalty provisions traced to primary legislation.</p>
+        </div>
+      </div>
+      <div class="trust-cell">
+        <div class="trust-icon">📑</div>
+        <div>
+          <p class="mono" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--em);margin-bottom:8px;">Omnibus 2024/2025</p>
+          <p style="font-size:13px;color:var(--t1);line-height:1.7;">Delegated acts specifying default emission factors per sector. All calculation defaults match the 2026 published values.</p>
+        </div>
+      </div>
+      <div class="trust-cell">
+        <div class="trust-icon">🔬</div>
+        <div>
+          <p class="mono" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--em);margin-bottom:8px;">ISO 14064-3</p>
+          <p style="font-size:13px;color:var(--t1);line-height:1.7;">Evidence vault categorisation aligned with third-party verification standards required by EU competent authorities.</p>
+        </div>
+      </div>
+      <div class="trust-cell">
+        <div class="trust-icon">📋</div>
+        <div>
+          <p class="mono" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--em);margin-bottom:8px;">CBAM Article 35</p>
+          <p style="font-size:13px;color:var(--t1);line-height:1.7;">Evidence requirements for non-EU manufacturer verified emission data. Checklist enforced in document upload flow.</p>
+        </div>
+      </div>
+      <div class="trust-cell">
+        <div class="trust-icon">🏦</div>
+        <div>
+          <p class="mono" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--em);margin-bottom:8px;">EU ETS Reference</p>
+          <p style="font-size:13px;color:var(--t1);line-height:1.7;">Certificate pricing scenarios based on EU ETS Q1–Q4 2026 forward curve projections. Updated quarterly.</p>
+        </div>
+      </div>
+      <div class="trust-cell">
+        <div class="trust-icon">🔐</div>
+        <div>
+          <p class="mono" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--em);margin-bottom:8px;">Data Security</p>
+          <p style="font-size:13px;color:var(--t1);line-height:1.7;">Client data never leaves your session without explicit export. No emission or production data stored on shared servers without consent.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     TESTIMONIALS
+══════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="ct">
+    <div style="margin-bottom:48px;" class="fi">
+      <p class="lbl" style="margin-bottom:12px;">From the Field</p>
+      <h2 class="display" style="font-size:clamp(24px,3.5vw,40px);font-weight:700;letter-spacing:-.02em;">What manufacturers are saying.</h2>
+    </div>
+    <div class="testi-grid fi">
+      <div class="testi">
+        <div class="testi-quote">Before CBAMbridge, we had no idea our combined shipments were already at 78% of the threshold. The alert gave us four months to prepare registration instead of scrambling at the deadline.</div>
+        <p class="testi-auth">Head of Export Compliance</p>
+        <p class="testi-co">Mid-size steel re-roller · Sircilla, Telangana</p>
+      </div>
+      <div class="testi">
+        <div class="testi-quote">The gap between our verified emission factor and the EU default was 22%. That difference, calculated across our annual tonnage, reduced our certificate obligation by over €180,000.</div>
+        <p class="testi-auth">CFO</p>
+        <p class="testi-co">Aluminium extrusions manufacturer · Pune, India</p>
+      </div>
+      <div class="testi">
+        <div class="testi-quote">We had energy bills and production logs in six different folders. The Evidence Vault turned that chaos into a structured document set our EU importer's legal team could actually use.</div>
+        <p class="testi-auth">Operations Manager</p>
+        <p class="testi-co">Fertilizer complex · Gujarat, India</p>
+      </div>
+      <div class="testi">
+        <div class="testi-quote">The financial model at the €85 bull scenario was sobering. It changed how our board thinks about CBAM — from a compliance checkbox to a real cost of market access that needs to be in the price.</div>
+        <p class="testi-auth">Managing Director</p>
+        <p class="testi-co">Industrial cement producer · Turkey</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     PRICING
+══════════════════════════════════════════════════════ -->
+<section class="sec" id="pricing" style="background:var(--ink1);border-top:1px solid var(--b0);">
+  <div class="ct">
+    <div style="text-align:center;margin-bottom:64px;" class="fi">
+      <p class="lbl" style="margin-bottom:14px;">Pricing</p>
+      <h2 class="display" style="font-size:clamp(28px,4vw,48px);font-weight:700;letter-spacing:-.02em;margin-bottom:16px;">Scale with your compliance needs.</h2>
+      <p style="font-size:16px;color:var(--t1);">No hidden costs. No per-shipment charges. Flat annual access.</p>
+    </div>
+    <div class="price-grid fi">
+      <!-- Starter -->
+      <div class="plan">
+        <p class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--t2);margin-bottom:16px;">Starter</p>
+        <div class="plan-price">€490</div>
+        <div class="plan-period">/ year · single facility</div>
+        <p class="plan-desc">For smaller exporters testing CBAM exposure below the threshold, or early-stage compliance awareness.</p>
+        <div style="margin-bottom:28px;">
+          <div class="plan-feature"><span class="pf-check">✓</span> Up to 10 shipment entries</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> Threshold calculator</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> Evidence Vault (5 files)</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> Base liability model</div>
+          <div class="plan-feature"><span class="pf-x">·</span> <span style="color:var(--t2);">Scenario modelling</span></div>
+          <div class="plan-feature"><span class="pf-x">·</span> <span style="color:var(--t2);">Full compliance report</span></div>
+          <div class="plan-feature"><span class="pf-x">·</span> <span style="color:var(--t2);">Priority support</span></div>
+        </div>
+        <a href="app.html" class="btn-ghost" style="display:block;text-align:center;">Get Started</a>
+      </div>
+      <!-- Professional (featured) -->
+      <div class="plan featured">
+        <div class="plan-badge">Most Popular</div>
+        <p class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--em);margin-bottom:16px;">Professional</p>
+        <div class="plan-price">€1,490</div>
+        <div class="plan-period">/ year · single facility</div>
+        <p class="plan-desc">For active exporters above or approaching the threshold who need full audit trail and financial modelling.</p>
+        <div style="margin-bottom:28px;">
+          <div class="plan-feature"><span class="pf-check">✓</span> Unlimited shipment entries</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> Threshold + critical alerts</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> Evidence Vault (unlimited)</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> 4 ETS price scenarios</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> Full compliance report</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> SHAP emission analysis</div>
+          <div class="plan-feature"><span class="pf-x">·</span> <span style="color:var(--t2);">Multi-facility</span></div>
+        </div>
+        <a href="app.html" class="btn-em" style="display:block;text-align:center;">Start Free Trial</a>
+      </div>
+      <!-- Enterprise -->
+      <div class="plan">
+        <p class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--t2);margin-bottom:16px;">Enterprise</p>
+        <div class="plan-price">Custom</div>
+        <div class="plan-period">annual contract · multi-facility</div>
+        <p class="plan-desc">For manufacturing groups, trade associations, and EU importers managing compliance across multiple supplier facilities.</p>
+        <div style="margin-bottom:28px;">
+          <div class="plan-feature"><span class="pf-check">✓</span> Unlimited facilities</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> Consolidated group reporting</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> API access</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> White-label option</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> Dedicated compliance advisor</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> SLA + priority support</div>
+          <div class="plan-feature"><span class="pf-check">✓</span> Custom ETS price feed</div>
+        </div>
+        <a href="mailto:enterprise@cbambridge.com" class="btn-ghost" style="display:block;text-align:center;">Contact Sales</a>
+      </div>
+    </div>
+
+    <!-- Enterprise note -->
+    <div class="fi" style="margin-top:2px;border:1px solid var(--b0);background:var(--ink0);padding:24px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+      <p style="font-size:14px;color:var(--t1);">All plans include a <strong style="color:var(--t0);">14-day free trial</strong>. No credit card required. Cancel anytime.</p>
+      <span class="mono" style="font-size:10px;color:var(--t2);letter-spacing:.12em;text-transform:uppercase;">EU VAT not included · Invoices issued in EUR</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     FAQ
+══════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="ct">
+    <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:80px;">
+      <div class="fi" style="position:sticky;top:100px;">
+        <p class="lbl" style="margin-bottom:14px;">FAQ</p>
+        <h2 class="display" style="font-size:clamp(24px,3vw,38px);font-weight:700;letter-spacing:-.02em;margin-bottom:16px;">Common questions.</h2>
+        <p style="font-size:14px;color:var(--t1);line-height:1.75;">Can't find what you need? Contact us at <a href="mailto:hello@cbambridge.com" style="color:var(--em);">hello@cbambridge.com</a></p>
+      </div>
+      <div class="fi fi-d1">
+        <details class="faq">
+          <summary>What is the 50-tonne CBAM threshold exactly?</summary>
+          <p class="faq-body">Under the CBAM Omnibus 2026 provisions, if your total annual imports of CBAM-covered goods into the EU exceed 50 metric tonnes, you — or your EU importer on your behalf — must register as an Authorized CBAM Declarant. Below 50 tonnes, simplified reporting applies. The threshold is cumulative across all CBAM sectors combined.</p>
+        </details>
+        <details class="faq">
+          <summary>Do I register, or does my EU importer?</summary>
+          <p class="faq-body">The <em>Authorized CBAM Declarant</em> must be established in the EU — so technically your EU importer registers, not you as the non-EU manufacturer. However, the obligation is triggered by your production data, and you are responsible for supplying verified emission information to support their declaration. CBAMbridge helps you prepare that data package.</p>
+        </details>
+        <details class="faq">
+          <summary>How does using actual emission data reduce my liability?</summary>
+          <p class="faq-body">CBAM charges are based on embedded emissions. If you can demonstrate (via third-party verified production data) that your actual emission factor is lower than the EU default for your sector, your certificate obligation falls proportionally. For Indian steel, for example, the EU default is 2.04 tCO₂e/t — but plants with modern DRI-EAF routes may achieve 1.6–1.8 tCO₂e/t, reducing liability by up to 20%.</p>
+        </details>
+        <details class="faq">
+          <summary>What documents go into the Evidence Vault?</summary>
+          <p class="faq-body">EU Article 35 requires: monthly electricity and fuel consumption records, production output logs (by batch or period), fuel purchase invoices, and if available, third-party verified emissions reports. CBAMbridge maps these exactly into six categories and tracks Article 35 completeness against required document types.</p>
+        </details>
+        <details class="faq">
+          <summary>Is CBAMbridge a legal compliance tool?</summary>
+          <p class="faq-body">CBAMbridge provides indicative guidance and calculation infrastructure based on publicly available CBAM regulations. It is not a substitute for qualified legal or customs compliance advice. We strongly recommend engaging an EU-licensed trade compliance advisor for formal declarations. Our tool helps you prepare — the official submission goes through your EU importer's national competent authority.</p>
+        </details>
+        <details class="faq">
+          <summary>How often are emission default factors updated?</summary>
+          <p class="faq-body">EU default emission factors are published in the CBAM delegated acts and reviewed periodically. CBAMbridge updates its factor database quarterly and notifies affected users when any factor change impacts their calculated liability. Enterprise plan users receive automatic recalculation on factor updates.</p>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     CTA
+══════════════════════════════════════════════════════ -->
+<div class="cta-sec">
+  <div class="cta-glow"></div>
+  <div class="ct" style="padding-top:100px;padding-bottom:100px;text-align:center;position:relative;z-index:1;">
+    <p class="lbl fi" style="margin-bottom:18px;">Start Today</p>
+    <h2 class="display fi fi-d1" style="font-size:clamp(32px,5vw,64px);font-weight:800;letter-spacing:-.03em;margin-bottom:20px;">
+      T−<span id="cta-days">0</span> days to the deadline.
+    </h2>
+    <p class="fi fi-d2" style="font-size:17px;color:var(--t1);max-width:520px;margin:0 auto 40px;line-height:1.75;">Every day without a compliance audit is a day closer to the March 31, 2026 Authorized Declarant registration deadline.</p>
+    <div class="fi fi-d3" style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
+      <a href="app.html" class="btn-em">Start Free Compliance Audit →</a>
+      <a href="mailto:hello@cbambridge.com" class="btn-ghost">Talk to an Expert</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════════ -->
+<footer>
+  <div class="ct">
+    <div class="ft-grid">
+      <div>
+        <div class="wordmark" style="font-size:20px;margin-bottom:14px;">CBAM<span>bridge</span></div>
+        <p style="font-size:13px;color:var(--t2);line-height:1.75;max-width:280px;margin-bottom:20px;">CBAM compliance infrastructure for non-EU manufacturers. Threshold intelligence, evidence management, financial modelling.</p>
+        <p class="mono" style="font-size:10px;color:var(--t2);letter-spacing:.1em;">CBAMbridge.com</p>
+      </div>
+      <div>
+        <p class="ft-heading">Platform</p>
+        <a href="app.html" class="ft-link">Compliance Dashboard</a>
+        <a href="#features" class="ft-link">Features</a>
+        <a href="#pricing" class="ft-link">Pricing</a>
+        <a href="#how-it-works" class="ft-link">How It Works</a>
+      </div>
+      <div>
+        <p class="ft-heading">Compliance</p>
+        <a href="#compliance" class="ft-link">EU Reg. 2023/956</a>
+        <a href="#" class="ft-link">Sector Coverage</a>
+        <a href="#" class="ft-link">Emission Factors</a>
+        <a href="#" class="ft-link">Article 35 Guide</a>
+      </div>
+      <div>
+        <p class="ft-heading">Company</p>
+        <a href="mailto:hello@cbambridge.com" class="ft-link">Contact</a>
+        <a href="mailto:enterprise@cbambridge.com" class="ft-link">Enterprise Sales</a>
+        <a href="#" class="ft-link">Privacy Policy</a>
+        <a href="#" class="ft-link">Terms of Service</a>
+      </div>
+    </div>
+    <div class="ft-bottom">
+      <p class="mono" style="font-size:10px;color:var(--t2);letter-spacing:.08em;">© 2026 CBAMbridge. All rights reserved.</p>
+      <p class="mono" style="font-size:10px;color:var(--t2);letter-spacing:.08em;">EU Reg. 2023/956 · CBAM Omnibus 2026 · Indicative guidance only</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+'use strict';
+/* ── Cursor ─────────────────────────────────── */
+(function(){
+  var c=document.getElementById('cur'),r=document.getElementById('cur-r');
+  var mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',function(e){
+    mx=e.clientX;my=e.clientY;
+    c.style.left=mx+'px';c.style.top=my+'px';
+  },{passive:true});
+  (function loop(){
+    rx+=(mx-rx)*.1;ry+=(my-ry)*.1;
+    r.style.left=rx+'px';r.style.top=ry+'px';
+    requestAnimationFrame(loop);
+  })();
+  document.querySelectorAll('a,button,summary,.feat').forEach(function(el){
+    el.addEventListener('mouseenter',function(){c.style.width='4px';c.style.height='4px';r.style.width='44px';r.style.height='44px';});
+    el.addEventListener('mouseleave',function(){c.style.width='8px';c.style.height='8px';r.style.width='28px';r.style.height='28px';});
+  });
+})();
+
+/* ── Nav scroll ─────────────────────────────── */
+window.addEventListener('scroll',function(){
+  document.getElementById('nav').classList.toggle('scrolled',window.scrollY>20);
+},{passive:true});
+
+/* ── Deadline countdown ─────────────────────── */
+function daysLeft(){
+  var d=new Date('2026-03-31T23:59:59Z');
+  return Math.max(0,Math.ceil((d-new Date())/(864e5)));
+}
+var dl=daysLeft();
+var e1=document.getElementById('hds3');
+var e2=document.getElementById('cta-days');
+if(e1)e1.textContent=dl;
+if(e2)e2.textContent=dl;
+
+/* ── Animated counters ──────────────────────── */
+function animCount(el,end,prefix,suffix,decimals){
+  var start=0,dur=1800,s=performance.now();
+  function step(t){
+    var p=Math.min(1,(t-s)/dur);
+    var v=start+(end-start)*(1-Math.pow(1-p,4));
+    el.textContent=prefix+(decimals?v.toFixed(decimals):Math.floor(v).toLocaleString())+suffix;
+    if(p<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+var countersRun=false;
+var io=new IntersectionObserver(function(entries){
+  if(entries[0].isIntersecting&&!countersRun){
+    countersRun=true;
+    var el1=document.getElementById('hds1');
+    var el2=document.getElementById('hds2');
+    if(el1)animCount(el1,48200,'€','',0);
+    if(el2)animCount(el2,1247,'','',0);
+  }
+},{threshold:.3});
+var hs=document.querySelector('.hero-data-strip');
+if(hs)io.observe(hs);
+
+/* ── Fade-up on scroll ──────────────────────── */
+var fio=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('on');fio.unobserve(e.target);}});
+},{threshold:.07});
+document.querySelectorAll('.fi').forEach(function(el){fio.observe(el);});
+
+/* ── Dashboard bars ─────────────────────────── */
+var barsRun=false;
+var bio=new IntersectionObserver(function(entries){
+  if(entries[0].isIntersecting&&!barsRun){
+    barsRun=true;
+    document.querySelectorAll('.db-fill').forEach(function(b,i){
+      setTimeout(function(){b.classList.add('go');},i*200);
+    });
+    bio.disconnect();
+  }
+},{threshold:.2});
+var dbr=document.querySelector('.db-row');
+if(dbr)bio.observe(dbr);
+</script>
+</body>
+</html>
